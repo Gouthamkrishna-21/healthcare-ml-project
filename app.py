@@ -3,161 +3,227 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
-
+import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-# =========================
-# PAGE CONFIG
-# =========================
+# ==========================================
+# 1. PAGE & THEME CONFIG
+# ==========================================
 st.set_page_config(
-    page_title="Healthcare Disease Prediction",
+    page_title="HFR-MADM Healthcare System",
+    page_icon="🩺",
     layout="wide"
 )
 
-# =========================
-# SIDEBAR
-# =========================
-st.sidebar.title("🩺 Healthcare ML App")
-st.sidebar.markdown("""
-**Project Features**
-- Dataset Quality Ranking (HFR-MADM)
-- Automatic Best Dataset Selection
-- Disease Risk Prediction
-- Visual Results
-""")
+# Custom Medical CSS
+st.markdown("""
+    <style>
+    .main { background-color: #f0f2f6; }
+    .stTabs [data-baseweb="tab-list"] { gap: 24px; }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #ffffff;
+        border-radius: 4px 4px 0px 0px;
+        gap: 1px;
+        padding-top: 10px;
+    }
+    .stTabs [aria-selected="true"] { background-color: #e1f5fe; border-bottom: 2px solid #01579b; }
+    div[data-testid="metric-container"] {
+        background-color: #ffffff;
+        border: 1px solid #e0e0e0;
+        padding: 15px;
+        border-radius: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-run_button = st.sidebar.button("🚀 Run Analysis")
+# ==========================================
+# 2. LOGIC & PROCESSING
+# ==========================================
 
-# =========================
-# TITLE
-# =========================
-st.title("Hesitant Fuzzy Rough MADM based Healthcare Prediction System")
-st.write("Upload datasets in the **data/** folder and run the analysis.")
-
-# =========================
-# LOAD DATASETS
-# =========================
 def load_datasets(data_folder="data"):
     datasets = {}
-
     if not os.path.exists(data_folder):
-        st.error("❌ data folder not found")
+        st.error(f"Directory '{data_folder}' not found.")
         return datasets
 
     for file in os.listdir(data_folder):
         if file.endswith(".csv"):
-            df = pd.read_csv(os.path.join(data_folder, file))
-            df = df.dropna().drop_duplicates()
-
-            le = LabelEncoder()
-            for col in df.columns:
-                if not pd.api.types.is_numeric_dtype(df[col]):
-                    df[col] = le.fit_transform(df[col].astype(str))
-
-            X = df.iloc[:, :-1]
-            y = df.iloc[:, -1]
-
-            if y.nunique() < 2:
-                continue
-
-            datasets[file] = (X, y)
-
+            try:
+                df = pd.read_csv(os.path.join(data_folder, file))
+                df = df.dropna().drop_duplicates()
+                
+                # Auto-encoding for non-numeric clinical data
+                le = LabelEncoder()
+                for col in df.columns:
+                    if not pd.api.types.is_numeric_dtype(df[col]):
+                        df[col] = le.fit_transform(df[col].astype(str))
+                
+                X = df.iloc[:, :-1]
+                y = df.iloc[:, -1]
+                if y.nunique() >= 2:
+                    datasets[file] = (X, y, df)
+            except Exception as e:
+                st.sidebar.error(f"Error loading {file}: {e}")
     return datasets
 
-# =========================
-# HFR-MADM
-# =========================
-def hfr_madm(datasets):
-    np.random.seed(42)
-    weights = np.array([0.35, 0.15, 0.30, 0.20])
-    scores = {}
+def hfr_madm_logic(datasets):
+    """
+    Calculates Dataset Quality Score using 
+    Hesitant Fuzzy Rough Multi-Attribute Decision Making.
+    """
+    # Criteria Weights: [Volume, Class Balance, Feature Richness, Reliability]
+    weights = np.array([0.35, 0.25, 0.25, 0.15])
+    ranking_data = []
 
-    for name, (X, _) in datasets.items():
-        f1 = min(len(X) / 1000, 1.0)
-        f2 = 1.0
-        f3 = min(X.shape[1] / 30, 1.0)
-        f4 = 1 - np.random.uniform(0.05, 0.15)
-
+    for name, (X, y, _) in datasets.items():
+        # Normalized Attributes
+        f1 = min(len(X) / 1500, 1.0) # Size factor
+        f2 = 1.0 - abs(0.5 - y.value_counts(normalize=True).iloc[0]) # Balance factor
+        f3 = min(X.shape[1] / 25, 1.0) # Feature factor
+        f4 = 0.95 # Reliability constant
+        
         metrics = [f1, f2, f3, f4]
-        hesitant = [np.mean([m*0.95, m, min(m*1.05, 1)]) for m in metrics]
-        scores[name] = np.dot(hesitant, weights)
+        # Hesitant Fuzzy calculation (applying fuzzy bounds)
+        hesitant_values = [np.mean([m*0.9, m, min(m*1.1, 1.0)]) for m in metrics]
+        score = np.dot(hesitant_values, weights)
+        
+        ranking_data.append({
+            "Dataset": name, 
+            "Score": round(score, 4), 
+            "Samples": len(X), 
+            "Features": X.shape[1]
+        })
+    
+    return pd.DataFrame(ranking_data).sort_values(by="Score", ascending=False)
 
-    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    return ranked
-
-# =========================
-# PREDICTION
-# =========================
-def disease_prediction(X, y):
+def train_best_model(X, y):
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
-
+    
     scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train)
-    X_test = scaler.transform(X_test)
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    # Using Random Forest for better clinical feature analysis
+    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    model.fit(X_train_scaled, y_train)
+    
+    preds = model.predict(X_test_scaled)
+    acc = accuracy_score(y_test, preds)
+    report = classification_report(y_test, preds, output_dict=True)
+    cm = confusion_matrix(y_test, preds)
+    
+    return model, acc, report, cm, scaler, X.columns
 
-    model = LogisticRegression(max_iter=5000, class_weight="balanced")
-    model.fit(X_train, y_train)
+# ==========================================
+# 3. SIDEBAR & NAVIGATION
+# ==========================================
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2966/2966327.png", width=80)
+st.sidebar.title("Clinical Dashboard")
+st.sidebar.markdown("---")
+analyze_btn = st.sidebar.button("🚀 Run System Analysis", use_container_width=True)
+st.sidebar.markdown("### System Info")
+st.sidebar.info("This system uses HFR-MADM to select the most reliable healthcare dataset before training prediction models.")
 
-    y_pred = model.predict(X_test)
+# ==========================================
+# 4. MAIN INTERFACE
+# ==========================================
+st.title("🩺 Hesitant Fuzzy Rough Healthcare Prediction")
+st.caption("Advanced Dataset Selection & Disease Risk Classification System")
 
-    acc = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, output_dict=True)
-
-    return acc, pd.DataFrame(report).T.round(3)
-
-# =========================
-# RUN APP
-# =========================
-if run_button:
-    data = load_datasets("data")
-
-    if len(data) < 2:
-        st.warning("⚠️ Please add at least two datasets.")
+if analyze_btn:
+    data_store = load_datasets("data")
+    
+    if len(data_store) < 2:
+        st.warning("⚠️ Please ensure at least 2 CSV files are in the 'data' folder for comparison.")
     else:
-        rankings = hfr_madm(data)
+        # Step 1: Rankings
+        rank_df = hfr_madm_logic(data_store)
+        best_dataset_name = rank_df.iloc[0]['Dataset']
+        X_best, y_best, raw_df = data_store[best_dataset_name]
+        
+        # Step 2: Training
+        model, acc, report, cm, scaler, feature_names = train_best_model(X_best, y_best)
+        
+        # UI TABS
+        tab1, tab2, tab3 = st.tabs(["📊 Dataset Evaluation", "🧪 Clinical Metrics", "🔍 Risk Predictor"])
+        
+        with tab1:
+            st.subheader("HFR-MADM Ranking Results")
+            c1, c2 = st.columns([1, 1.5])
+            with c1:
+                st.write("Quality scores based on volume, balance, and feature richness.")
+                st.dataframe(rank_df.style.highlight_max(axis=0, subset=['Score']), use_container_width=True)
+            with c2:
+                fig, ax = plt.subplots(figsize=(8, 4))
+                sns.barplot(data=rank_df, x="Score", y="Dataset", palette="Blues_d")
+                st.pyplot(fig)
+            
+            st.success(f"🏆 The system has selected **{best_dataset_name}** as the most reliable source.")
 
-        # ----- RANKING TABLE -----
-        st.subheader("📊 Dataset Quality Ranking")
+        with tab2:
+            st.subheader("Model Performance Summary")
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Prediction Accuracy", f"{acc:.2%}")
+            m2.metric("Best Source", best_dataset_name)
+            m3.metric("Features Analyzed", len(feature_names))
+            
+            
+            
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown("**Confusion Matrix**")
+                fig_cm, ax_cm = plt.subplots()
+                sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax_cm)
+                st.pyplot(fig_cm)
+            with col_b:
+                st.markdown("**Feature Importance**")
+                feat_importances = pd.Series(model.feature_importances_, index=feature_names)
+                fig_fi, ax_fi = plt.subplots()
+                feat_importances.nlargest(10).plot(kind='barh', color='#01579b')
+                st.pyplot(fig_fi)
 
-        rank_df = pd.DataFrame({
-            "Rank": range(1, len(rankings)+1),
-            "Dataset": [r[0] for r in rankings],
-            "Score": [round(r[1], 4) for r in rankings]
-        })
-
-        st.dataframe(rank_df, use_container_width=True)
-
-        # ----- BAR CHART -----
-        fig, ax = plt.subplots()
-        ax.bar(rank_df["Dataset"], rank_df["Score"])
-        ax.set_title("Dataset Ranking Scores")
-        ax.set_ylabel("Score")
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
-
-        # ----- BEST DATASET -----
-        best_dataset = rankings[0][0]
-        X, y = data[best_dataset]
-
-        acc, report_df = disease_prediction(X, y)
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.success(f"✅ Selected Dataset\n\n{best_dataset}")
-
-        with col2:
-            st.metric("🎯 Accuracy", f"{round(acc*100, 2)}%")
-
-        # ----- CLASSIFICATION REPORT -----
-        st.subheader("🧪 Clinical Classification Report")
-        st.dataframe(report_df, use_container_width=True)
+        with tab3:
+            st.subheader("Real-time Patient Risk Assessment")
+            st.write("Input patient data based on the selected dataset features:")
+            
+            # Create a dynamic form based on the dataset features
+            with st.form("prediction_form"):
+                cols = st.columns(3)
+                user_input = []
+                for i, col_name in enumerate(feature_names):
+                    with cols[i % 3]:
+                        val = st.number_input(f"{col_name}", value=float(raw_df[col_name].median()))
+                        user_input.append(val)
+                
+                submit = st.form_submit_button("Generate Diagnosis")
+                
+                if submit:
+                    input_scaled = scaler.transform([user_input])
+                    prediction = model.predict(input_scaled)
+                    prob = model.predict_proba(input_scaled)
+                    
+                    if prediction[0] == 1:
+                        st.error(f"⚠️ High Risk Detected (Confidence: {max(prob[0]):.2%})")
+                    else:
+                        st.success(f"✅ Low Risk Detected (Confidence: {max(prob[0]):.2%})")
 
 else:
-    st.info("👈 Click **Run Analysis** from the sidebar to start.")
-
+    # Landing Page State
+    st.info("👈 Use the sidebar to trigger the HFR-MADM analysis engine.")
+    
+    c1, c2, c3 = st.columns(3)
+    c1.markdown("### 1. Data Selection")
+    c1.write("The system scans the /data folder for clinical CSV files.")
+    
+    c2.markdown("### 2. Fuzzy Logic")
+    c2.write("HFR-MADM ranks datasets by calculating hesitant fuzzy uncertainty.")
+    
+    c3.markdown("### 3. Prediction")
+    c3.write("A Random Forest model is trained on the best source for high accuracy.")
