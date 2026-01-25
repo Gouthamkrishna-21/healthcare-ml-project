@@ -190,29 +190,58 @@ if analyze_btn:
                 st.pyplot(fig_fi)
 
         with tab3:
-            st.subheader("Real-time Patient Risk Assessment")
-            st.write("Input patient data based on the selected dataset features:")
+            st.subheader("🔍 Real-time Patient Risk Assessment")
+            st.info("The form below is automatically generated based on the features of the selected dataset.")
             
-            # Create a dynamic form based on the dataset features
+            # 1. Initialize session state for the result so it persists after clicking
+            if "diagnosis_result" not in st.session_state:
+                st.session_state.diagnosis_result = None
+
+            # 2. The Input Form
             with st.form("prediction_form"):
                 cols = st.columns(3)
                 user_input = []
+                
+                # Dynamic input fields based on the dataset
                 for i, col_name in enumerate(feature_names):
                     with cols[i % 3]:
-                        val = st.number_input(f"{col_name}", value=float(raw_df[col_name].median()))
+                        # Using a unique key for each input is best practice in Streamlit
+                        val = st.number_input(
+                            f"{col_name}", 
+                            value=float(raw_df[col_name].median()),
+                            key=f"input_{col_name}"
+                        )
                         user_input.append(val)
                 
-                submit = st.form_submit_button("Generate Diagnosis")
+                submit = st.form_submit_button("Generate Diagnosis", use_container_width=True)
                 
                 if submit:
-                    input_scaled = scaler.transform([user_input])
+                    # Prepare the data
+                    input_array = np.array(user_input).reshape(1, -1)
+                    input_scaled = scaler.transform(input_array)
+                    
+                    # Run Prediction
                     prediction = model.predict(input_scaled)
                     prob = model.predict_proba(input_scaled)
                     
-                    if prediction[0] == 1:
-                        st.error(f"⚠️ High Risk Detected (Confidence: {max(prob[0]):.2%})")
-                    else:
-                        st.success(f"✅ Low Risk Detected (Confidence: {max(prob[0]):.2%})")
+                    # Save results to session state so they stay visible
+                    st.session_state.diagnosis_result = {
+                        "risk": "High" if prediction[0] == 1 else "Low",
+                        "confidence": max(prob[0])
+                    }
+
+            # 3. Display the result OUTSIDE the form block for better visibility
+            if st.session_state.diagnosis_result:
+                res = st.session_state.diagnosis_result
+                st.markdown("---")
+                st.markdown("### 📋 Clinical Result")
+                
+                if res["risk"] == "High":
+                    st.error(f"### ⚠️ High Risk Detected\n**Confidence Level:** {res['confidence']:.2%}")
+                    st.markdown("> **Recommendation:** Urgent clinical follow-up and further diagnostic testing advised.")
+                else:
+                    st.success(f"### ✅ Low Risk Detected\n**Confidence Level:** {res['confidence']:.2%}")
+                    st.markdown("> **Observation:** Patient metrics are within normal bounds for this specific model.")    
 
 else:
     # Landing Page State
@@ -227,3 +256,4 @@ else:
     
     c3.markdown("### 3. Prediction")
     c3.write("A Random Forest model is trained on the best source for high accuracy.")
+
