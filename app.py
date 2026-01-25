@@ -3,40 +3,48 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report
 
-# -----------------------------
+# =========================
 # PAGE CONFIG
-# -----------------------------
+# =========================
 st.set_page_config(
-    page_title="Healthcare Disease Prediction System",
+    page_title="Healthcare Disease Prediction",
     layout="wide"
 )
 
-st.title("Healthcare Disease Prediction System")
-st.subheader("Hesitant Fuzzy Rough MADM based Dataset Selection & Disease Prediction")
+# =========================
+# SIDEBAR
+# =========================
+st.sidebar.title("🩺 Healthcare ML App")
+st.sidebar.markdown("""
+**Project Features**
+- Dataset Quality Ranking (HFR-MADM)
+- Automatic Best Dataset Selection
+- Disease Risk Prediction
+- Visual Results
+""")
 
-st.markdown(
-    """
-    This web application evaluates multiple healthcare datasets,
-    ranks them using **Hesitant Fuzzy Rough MADM**, selects the best dataset,
-    and performs **disease risk prediction** using machine learning.
-    """
-)
+run_button = st.sidebar.button("🚀 Run Analysis")
 
-# -----------------------------
-# 1. LOAD DATASETS
-# -----------------------------
+# =========================
+# TITLE
+# =========================
+st.title("Hesitant Fuzzy Rough MADM based Healthcare Prediction System")
+st.write("Upload datasets in the **data/** folder and run the analysis.")
+
+# =========================
+# LOAD DATASETS
+# =========================
 def load_datasets(data_folder="data"):
     datasets = {}
 
     if not os.path.exists(data_folder):
-        st.error("❌ Data folder not found.")
+        st.error("❌ data folder not found")
         return datasets
 
     for file in os.listdir(data_folder):
@@ -59,34 +67,30 @@ def load_datasets(data_folder="data"):
 
     return datasets
 
-
-# -----------------------------
-# 2. HESITANT FUZZY ROUGH MADM
-# -----------------------------
-def hesitant_fuzzy_rough_madm(datasets):
+# =========================
+# HFR-MADM
+# =========================
+def hfr_madm(datasets):
     np.random.seed(42)
     weights = np.array([0.35, 0.15, 0.30, 0.20])
     scores = {}
 
     for name, (X, _) in datasets.items():
-        f1 = min(len(X) / 1000, 1.0)         # dataset size
-        f2 = 1.0                             # completeness
-        f3 = min(X.shape[1] / 30, 1.0)       # feature richness
-        f4 = 1 - np.random.uniform(0.05, 0.15)  # uncertainty
+        f1 = min(len(X) / 1000, 1.0)
+        f2 = 1.0
+        f3 = min(X.shape[1] / 30, 1.0)
+        f4 = 1 - np.random.uniform(0.05, 0.15)
 
         metrics = [f1, f2, f3, f4]
-        hesitant_means = [
-            np.mean([m * 0.95, m, min(m * 1.05, 1.0)]) for m in metrics
-        ]
+        hesitant = [np.mean([m*0.95, m, min(m*1.05, 1)]) for m in metrics]
+        scores[name] = np.dot(hesitant, weights)
 
-        scores[name] = np.dot(hesitant_means, weights)
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    return ranked
 
-    return sorted(scores.items(), key=lambda x: x[1], reverse=True)
-
-
-# -----------------------------
-# 3. DISEASE PREDICTION
-# -----------------------------
+# =========================
+# PREDICTION
+# =========================
 def disease_prediction(X, y):
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
@@ -102,72 +106,58 @@ def disease_prediction(X, y):
     y_pred = model.predict(X_test)
 
     acc = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
-    cm = confusion_matrix(y_test, y_pred)
+    report = classification_report(y_test, y_pred, output_dict=True)
 
-    return acc, report, cm
+    return acc, pd.DataFrame(report).T.round(3)
 
-
-# -----------------------------
-# RUN APPLICATION
-# -----------------------------
-if st.button("Run Project"):
+# =========================
+# RUN APP
+# =========================
+if run_button:
     data = load_datasets("data")
 
     if len(data) < 2:
-        st.warning("⚠️ Please add at least two datasets inside the data folder.")
+        st.warning("⚠️ Please add at least two datasets.")
     else:
-        rankings = hesitant_fuzzy_rough_madm(data)
+        rankings = hfr_madm(data)
 
-        # -----------------------------
-        # DATASET RANKING TABLE
-        # -----------------------------
-        st.header("Dataset Quality Ranking")
+        # ----- RANKING TABLE -----
+        st.subheader("📊 Dataset Quality Ranking")
 
-        ranking_df = pd.DataFrame(rankings, columns=["Dataset", "Quality Score"])
-        ranking_df.insert(0, "Rank", range(1, len(ranking_df) + 1))
+        rank_df = pd.DataFrame({
+            "Rank": range(1, len(rankings)+1),
+            "Dataset": [r[0] for r in rankings],
+            "Score": [round(r[1], 4) for r in rankings]
+        })
 
-        st.dataframe(ranking_df, use_container_width=True)
+        st.dataframe(rank_df, use_container_width=True)
 
-        # -----------------------------
-        # RANKING BAR CHART
-        # -----------------------------
-        st.subheader("Dataset Quality Comparison")
+        # ----- BAR CHART -----
+        fig, ax = plt.subplots()
+        ax.bar(rank_df["Dataset"], rank_df["Score"])
+        ax.set_title("Dataset Ranking Scores")
+        ax.set_ylabel("Score")
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
 
-        st.bar_chart(
-            ranking_df.set_index("Dataset")["Quality Score"]
-        )
+        # ----- BEST DATASET -----
+        best_dataset = rankings[0][0]
+        X, y = data[best_dataset]
 
-        # -----------------------------
-        # BEST DATASET & MODEL RESULTS
-        # -----------------------------
-        best_file = rankings[0][0]
-        X, y = data[best_file]
+        acc, report_df = disease_prediction(X, y)
 
-        acc, report, cm = disease_prediction(X, y)
+        col1, col2 = st.columns(2)
 
-        st.success(f"Selected Dataset: {best_file}")
+        with col1:
+            st.success(f"✅ Selected Dataset\n\n{best_dataset}")
 
-        st.metric(
-            label="System Accuracy",
-            value=f"{acc * 100:.2f}%"
-        )
+        with col2:
+            st.metric("🎯 Accuracy", f"{round(acc*100, 2)}%")
 
-        # -----------------------------
-        # CLASSIFICATION REPORT
-        # -----------------------------
-        st.header("Clinical Classification Report")
-
-        report_df = pd.DataFrame(report).transpose().round(3)
+        # ----- CLASSIFICATION REPORT -----
+        st.subheader("🧪 Clinical Classification Report")
         st.dataframe(report_df, use_container_width=True)
 
-        # -----------------------------
-        # CONFUSION MATRIX
-        # -----------------------------
-        st.subheader("Confusion Matrix")
+else:
+    st.info("👈 Click **Run Analysis** from the sidebar to start.")
 
-        fig, ax = plt.subplots()
-        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
-        ax.set_xlabel("Predicted")
-        ax.set_ylabel("Actual")
-        st.pyplot(fig)
