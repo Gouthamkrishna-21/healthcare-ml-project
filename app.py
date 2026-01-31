@@ -234,7 +234,7 @@ with tab3:
         colors=colors,
         radius=0.8,
         textprops={'fontsize': 8}
-        wedgeprops={edgecolor': 'white', 'linewidth': 1}
+        wedgeprops={'edgecolor': 'white', 'linewidth': 1}
     )
     ax_pie.axis('equal')
     plt.tight_layout() 
@@ -259,6 +259,7 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
 
 
 
