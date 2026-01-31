@@ -157,28 +157,35 @@ with tab1:
     )
 
     col1, col2 = st.columns(2)
+
     with col1:
         st.write("**Dataset Quality Scores**")
         fig1, ax1 = plt.subplots(figsize=(6, 4))
-        sns.barplot(data=rankings, x="Score", y="Dataset", palette="Blues_d", ax=ax1)
+        sns.barplot(
+            data=rankings,
+            x="Score",
+            y="Dataset",
+            palette="Blues_d",
+            ax=ax1
+        )
         st.pyplot(fig1)
 
     with col2:
         st.write("**Dataset Size vs Feature Count**")
         fig2, ax2 = plt.subplots(figsize=(6, 4))
-        
+
         sns.barplot(
             data=rankings,
             x="Samples",
             y="Dataset",
-            ax=ax2,
-            palette="Blues_d"
+            palette="Blues_d",
+            ax=ax2
         )
 
-    ax2.set_xlabel("Number of Samples")
-    ax2.set_ylabel("Dataset")
+        ax2.set_xlabel("Number of Samples")
+        ax2.set_ylabel("Dataset")
 
-    st.pyplot(fig2)
+        st.pyplot(fig2)
 
 with tab2:
     st.markdown("### **Logistic Regression Metrics**")
@@ -225,6 +232,7 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
 
 
 
