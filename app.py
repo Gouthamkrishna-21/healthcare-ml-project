@@ -21,31 +21,53 @@ st.set_page_config(
 # Custom CSS for "Real Website" Look
 st.markdown("""
 <style>
-.stApp { background-color: #f8f9fa; }
+/* Main background */
+.stApp {
+    background-color: #f8f9fa;
+}
+/* Custom Header Card */
 .main-header {
     background: linear-gradient(90deg, #004e92 0%, #000428 100%);
-    padding: 2rem; border-radius: 15px; color: white;
-    margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    padding: 2rem;
+    border-radius: 15px;
+    color: white;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
+/* Metric Card Styling */
 div[data-testid="stMetric"] {
-    background-color: white; padding: 20px; border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #edf2f7;
+    background-color: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 1px solid #edf2f7;
 }
-section[data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #e2e8f0; }
-.stTabs [data-baseweb="tab-list"] { gap: 8px; }
+/* Sidebar styling */
+section[data-testid="stSidebar"] {
+    background-color: #ffffff;
+    border-right: 1px solid #e2e8f0;
+}
+/* Tabs styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+}
 .stTabs [data-baseweb="tab"] {
-    height: 45px; background-color: white; border-radius: 8px 8px 0 0;
-    padding: 10px 25px; font-weight: 600;
+    height: 45px;
+    background-color: white;
+    border-radius: 8px 8px 0 0;
+    padding: 10px 25px;
+    font-weight: 600;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. LOGIC (Internal Logic Preserved)
+# 2. LOGIC (Logistic Regression Focus)
 # ==========================================
 def load_datasets(folder="data"):
     datasets = {}
-    if not os.path.exists(folder): return datasets
+    if not os.path.exists(folder):
+        return datasets
     for file in os.listdir(folder):
         if file.endswith(".csv"):
             df = pd.read_csv(os.path.join(folder, file)).dropna().drop_duplicates()
@@ -54,7 +76,8 @@ def load_datasets(folder="data"):
                 if not pd.api.types.is_numeric_dtype(df[col]):
                     df[col] = le.fit_transform(df[col].astype(str))
             X, y = df.iloc[:, :-1], df.iloc[:, -1]
-            if y.nunique() >= 2: datasets[file] = (X, y, df)
+            if y.nunique() >= 2:
+                datasets[file] = (X, y, df)
     return datasets
 
 def hfr_madm_logic(datasets):
@@ -75,32 +98,48 @@ def hfr_madm_logic(datasets):
     return pd.DataFrame(results).sort_values("Score", ascending=False)
 
 def train_model(X, y):
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
     scaler = StandardScaler()
     X_train_s = scaler.fit_transform(X_train)
     X_test_s = scaler.transform(X_test)
     model = LogisticRegression(max_iter=1000).fit(X_train_s, y_train)
     preds = model.predict(X_test_s)
-    return model, accuracy_score(y_test, preds), confusion_matrix(y_test, preds), classification_report(y_test, preds, output_dict=True), scaler, X.columns
+    return (
+        model,
+        accuracy_score(y_test, preds),
+        confusion_matrix(y_test, preds),
+        classification_report(y_test, preds, output_dict=True),
+        scaler,
+        X.columns
+    )
 
 # ==========================================
 # 3. SIDEBAR NAVIGATION
 # ==========================================
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3774/3774299.png", width=100)
+st.sidebar.markdown("### **Navigation Menu**")
+
 all_data = load_datasets("data")
 if not all_data:
     st.sidebar.error("Data folder empty!")
     st.stop()
 
-rankings = hfr_madm_logic(all_data).reset_index(drop=True)
+rankings = hfr_madm_logic(all_data)
+rankings = rankings.reset_index(drop=True)
 rankings.insert(0, "Rank", rankings.index + 1)
 dataset_choice = st.sidebar.selectbox("📂 Database Access", list(all_data.keys()))
+st.sidebar.markdown("---")
+st.sidebar.write("🏷️ **Top Ranked:**")
+st.sidebar.code(rankings.iloc[0]["Dataset"])
 
 # ==========================================
 # 4. MAIN INTERFACE
 # ==========================================
 st.markdown(f"""
 <div class="main-header">
-    <h1>🩺 Predictive Healthcare Decision System</h1>
+    <h1>🩺Predictive Healthcare Decision System</h1>
     <p>HFR-MADM Optimized Analysis | Active Source: {dataset_choice}</p>
 </div>
 """, unsafe_allow_html=True)
@@ -108,36 +147,58 @@ st.markdown(f"""
 X_sel, y_sel, raw_df = all_data[dataset_choice]
 model, acc, cm, report, scaler, feature_names = train_model(X_sel, y_sel)
 
-tab1, tab2, tab3 = st.tabs(["📊 Data Intelligence", "🧪 Model Performance", "🔍 Risk Diagnosis"])
+tab1, tab2, tab3 = st.tabs(
+    ["📊 Data Intelligence", "🧪 Model Performance", "🔍 Risk Diagnosis"]
+)
 
 with tab1:
     st.markdown("### **HFR-MADM Quality Ranking**")
-    st.dataframe(rankings.style.background_gradient(cmap="Blues", subset=["Score"]).format({"Score": "{:.3f}"}), use_container_width=True, hide_index=True)
+    st.dataframe(
+        rankings.style
+        .background_gradient(cmap="Blues", subset=["Score"])
+        .format({"Score": "{:.3f}"}),
+    use_container_width=True,
+    hide_index=True
+    )
 
     col1, col2 = st.columns(2)
+
     with col1:
-        st.write("**Dataset Quality Scores (Overall)**")
+        st.write("**Dataset Quality Scores**")
         fig1, ax1 = plt.subplots(figsize=(6, 4))
-        sns.barplot(data=rankings, x="Score", y="Dataset", palette="Blues_d", ax=ax1)
+        sns.barplot(
+            data=rankings,
+            x="Score",
+            y="Dataset",
+            palette="Blues_d",
+            ax=ax1
+        )
         st.pyplot(fig1)
 
     with col2:
-        # --- PIE CHART MOVED HERE (Overall Dataset Risk) ---
-        st.write(f"**Overall Risk Distribution: {dataset_choice}**")
+        st.write("**Dataset Size vs Feature Count**")
         fig2, ax2 = plt.subplots(figsize=(6, 4))
-        counts = y_sel.value_counts()
-        labels_map = {0: "Low Risk", 1: "High Risk"}
-        actual_labels = [labels_map.get(i, f"Class {i}") for i in counts.index]
-        ax2.pie(counts, labels=actual_labels, autopct='%1.1f%%', colors=['#4A90E2', '#D0021B'], startangle=90)
+
+        sns.barplot(
+            data=rankings,
+            x="Samples",
+            y="Dataset",
+            palette="Blues_d",
+            ax=ax2
+        )
+
+        ax2.set_xlabel("Number of Samples")
+        ax2.set_ylabel("Dataset")
+
         st.pyplot(fig2)
 
 with tab2:
-    st.markdown("### **Model Performance Metrics**")
+    st.markdown("### **Metrics**")
     m1, m2, m3 = st.columns(3)
     m1.metric("Diagnostic Accuracy", f"{acc:.2%}")
     m2.metric("Weighted F1-Score", f"{report['weighted avg']['f1-score']:.2%}")
     m3.metric("Processed Samples", f"{int(report['macro avg']['support'])}")
-    
+
     st.markdown("---")
     l, r = st.columns(2)
     with l:
@@ -145,6 +206,7 @@ with tab2:
         fig_cm, ax_cm = plt.subplots(figsize=(6, 4))
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax_cm)
         st.pyplot(fig_cm)
+
     with r:
         st.write("**Clinical Feature Weights**")
         coef = pd.Series(abs(model.coef_[0]), index=feature_names)
@@ -155,20 +217,23 @@ with tab2:
 
 with tab3:
     st.markdown("### **Patient Risk Predictor**")
-    st.info("Input clinical parameters to generate a specific probability score for an individual.")
+    st.info("Input clinical parameters to generate a risk probability score.")
+
     with st.form("clinical_form"):
         cols = st.columns(3)
         inputs = []
         for i, col in enumerate(feature_names):
             with cols[i % 3]:
-                # Updated min_value=0.0 to allow any valid entry
-                inputs.append(st.number_input(col, value=float(raw_df[col].median()), min_value=0.0))
-        
+                inputs.append(
+                    st.number_input(col, float(raw_df[col].median()))
+                )
+
         if st.form_submit_button("Generate Prediction", use_container_width=True):
             input_scaled = scaler.transform(np.array(inputs).reshape(1, -1))
             res = model.predict(input_scaled)[0]
             prob = model.predict_proba(input_scaled).max()
+
             if res == 1:
-                st.error(f"### ⚠️ INDIVIDUAL DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
+                st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
-                st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+                st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
