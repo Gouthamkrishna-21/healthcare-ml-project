@@ -137,7 +137,7 @@ st.sidebar.code(rankings.iloc[0]["Dataset"])
 # ==========================================
 st.markdown(f"""
 <div class="main-header">
-    <h1>🩺 Clinical Decision Support System</h1>
+    <h1>🩺Predictive Healthcare Decision System</h1>
     <p>HFR-MADM Optimized Analysis | Active Source: {dataset_choice}</p>
 </div>
 """, unsafe_allow_html=True)
@@ -232,6 +232,7 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
 
 
 
