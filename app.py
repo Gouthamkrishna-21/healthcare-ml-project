@@ -164,9 +164,8 @@ with tab1:
         st.pyplot(fig1)
 
     with col2:
-    st.write("**Dataset Size vs Feature Count**")
-
-    fig2, ax2 = plt.subplots(figsize=(6, 4))
+        st.write("**Dataset Size vs Feature Count**")
+        fig2, ax2 = plt.subplots(figsize=(6, 4))
 
     ax2.scatter(
         rankings["Samples"],
@@ -234,6 +233,7 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
 
 
 
