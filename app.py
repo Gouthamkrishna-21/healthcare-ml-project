@@ -164,22 +164,28 @@ with tab1:
         st.pyplot(fig1)
 
     with col2:
-        st.write("**Risk Distribution**")
+        st.write("**Dataset Size vs Feature Count**")
         fig2, ax2 = plt.subplots(figsize=(6, 4))
-        counts = y_sel.value_counts()
-        labels_map = {0: "Low Risk", 1: "High Risk"}
-        actual_labels = [labels_map.get(i, f"Class {i}") for i in counts.index]
-        color_palette = ["#4A90E2", "#D0021B"]
-        actual_colors = color_palette[:len(counts)]
-        ax2.pie(
-            counts,
-            labels=actual_labels,
-            autopct="%1.1f%%",
-            colors=actual_colors,
-            startangle=90
-        )
-        plt.tight_layout()
-        st.pyplot(fig2)
+        ax2.scatter(
+            rankings["Samples"],
+            rankings["Features"],
+            s=120,
+           alpha=0.8
+       )
+
+
+       for i, name in enumerate(rankings["Dataset"]):
+       ax2.text(
+        rankings["Samples"].iloc[i],
+        rankings["Features"].iloc[i],
+        name.replace(".csv", ""),
+        fontsize=8
+      )
+
+      ax2.set_xlabel("Number of Samples")
+      ax2.set_ylabel("Number of Features")
+
+     st.pyplot(fig2)
 
 with tab2:
     st.markdown("### **Logistic Regression Metrics**")
@@ -226,4 +232,5 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
 
