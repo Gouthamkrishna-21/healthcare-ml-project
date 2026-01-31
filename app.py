@@ -127,6 +127,8 @@ if not all_data:
     st.stop()
 
 rankings = hfr_madm_logic(all_data)
+rankings = rankings.reset_index(drop=True)
+rankings.insert(0, "Rank", rankings.index + 1)
 dataset_choice = st.sidebar.selectbox("📂 Database Access", list(all_data.keys()))
 st.sidebar.markdown("---")
 st.sidebar.write("🏷️ **Top Ranked:**")
@@ -152,8 +154,11 @@ tab1, tab2, tab3 = st.tabs(
 with tab1:
     st.markdown("### **HFR-MADM Quality Ranking**")
     st.dataframe(
-        rankings.style.background_gradient(cmap="Blues", subset=["Score"]),
-        use_container_width=True
+        rankings.style
+        .background_gradient(cmap="Blues", subset=["Score"])
+        .format({"Score": "{:.3f}"}),
+    use_container_width=True,
+    hide_index=True
     )
 
     col1, col2 = st.columns(2)
@@ -232,6 +237,7 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
 
 
 
