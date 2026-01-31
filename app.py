@@ -21,26 +21,22 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-/* Page background */
 .main {
     background-color: #f6f8fc;
 }
 
-/* Header title */
 .app-title {
     font-size: 36px;
     font-weight: 800;
     margin-bottom: 4px;
 }
 
-/* Subtitle */
 .app-subtitle {
     color: #6c757d;
     font-size: 15px;
     margin-bottom: 20px;
 }
 
-/* Tabs styling */
 .stTabs [data-baseweb="tab"] {
     background-color: white;
     padding: 10px 18px;
@@ -53,19 +49,6 @@ st.markdown("""
 }
 </style>
 """, unsafe_allow_html=True)
-
-# ==========================================
-# HEADER CONTENT
-# ==========================================
-st.markdown(
-    """
-    <div class="app-title">🧬 Hesitant Fuzzy Rough Healthcare Prediction</div>
-    <div class="app-subtitle">
-        Analyzing Source: <b>{}</b>
-    </div>
-    """.format(dataset_choice),
-    unsafe_allow_html=True
-)
 
 # ==========================================
 # 2. LOAD DATASETS
@@ -109,7 +92,7 @@ def hfr_madm_logic(datasets):
         f4 = 0.95
 
         metrics = [f1, f2, f3, f4]
-        hesitant = [np.mean([m*0.9, m, min(m*1.1, 1.0)]) for m in metrics]
+        hesitant = [np.mean([m * 0.9, m, min(m * 1.1, 1.0)]) for m in metrics]
         score = np.dot(hesitant, weights)
 
         results.append({
@@ -159,13 +142,25 @@ dataset_choice = st.sidebar.selectbox(
     list(all_data.keys())
 )
 
+# ==========================================
+# HEADER (AFTER dataset_choice EXISTS)
+# ==========================================
+st.markdown(
+    f"""
+    <div class="app-title">🧬 Hesitant Fuzzy Rough Healthcare Prediction</div>
+    <div class="app-subtitle">
+        Analyzing Source: <b>{dataset_choice}</b>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 X_sel, y_sel, raw_df = all_data[dataset_choice]
 model, acc, cm, report, scaler, feature_names = train_logistic_model(X_sel, y_sel)
 
 # ==========================================
 # 6. MAIN UI
 # ==========================================
-st.title("🩺 HFR-MADM Healthcare Prediction")
 st.info("Model Used: **Logistic Regression**")
 
 tab1, tab2, tab3 = st.tabs(["📊 Evaluation", "📈 Metrics", "🔍 Risk Predictor"])
@@ -182,34 +177,15 @@ with tab1:
 
     col1, col2 = st.columns(2)
 
-    # ---- Quality Score Comparison ----
     with col1:
-        st.markdown("### 📊 Quality Score Comparison")
         fig1, ax1 = plt.subplots()
-        sns.barplot(
-            data=rankings,
-            x="Score",
-            y="Dataset",
-            ax=ax1
-        )
-        ax1.set_xlabel("Quality Score")
-        ax1.set_ylabel("Dataset")
+        sns.barplot(data=rankings, x="Score", y="Dataset", ax=ax1)
         st.pyplot(fig1)
 
-    # ---- Dataset Size Comparison ----
     with col2:
-        st.markdown("### 📦 Dataset Size Comparison")
         fig2, ax2 = plt.subplots()
-        sns.barplot(
-            data=rankings,
-            x="Samples",
-            y="Dataset",
-            ax=ax2
-        )
-        ax2.set_xlabel("Number of Samples")
-        ax2.set_ylabel("Dataset")
+        sns.barplot(data=rankings, x="Samples", y="Dataset", ax=ax2)
         st.pyplot(fig2)
-
 
 # ---------- TAB 2 ----------
 with tab2:
@@ -220,37 +196,17 @@ with tab2:
 
     st.markdown("---")
 
-    # Side-by-side layout
     left, right = st.columns(2)
 
-    # ---- Confusion Matrix (smaller + clean colors) ----
     with left:
-        st.markdown("### 🧮 Confusion Matrix")
         fig_cm, ax_cm = plt.subplots(figsize=(4, 3))
-        sns.heatmap(
-            cm,
-            annot=True,
-            fmt="d",
-            cmap="Blues",
-            cbar=False,
-            linewidths=0.5,
-            ax=ax_cm
-        )
-        ax_cm.set_xlabel("Predicted")
-        ax_cm.set_ylabel("Actual")
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", cbar=False, ax=ax_cm)
         st.pyplot(fig_cm)
 
-    # ---- Feature Impact (Logistic Coefficients) ----
     with right:
-        st.markdown("### 📊 Feature Impact")
         coef = pd.Series(abs(model.coef_[0]), index=feature_names)
         fig_fi, ax_fi = plt.subplots(figsize=(4, 3))
-        coef.nlargest(10).plot(
-            kind="barh",
-            color="#00838f",
-            ax=ax_fi
-        )
-        ax_fi.set_xlabel("Impact Strength")
+        coef.nlargest(10).plot(kind="barh", ax=ax_fi)
         ax_fi.invert_yaxis()
         st.pyplot(fig_fi)
 
@@ -275,6 +231,3 @@ with tab3:
             st.error(f"⚠️ HIGH RISK (Confidence: {probability:.2%})")
         else:
             st.success(f"✅ LOW RISK (Confidence: {probability:.2%})")
-
-
-
