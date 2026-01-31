@@ -159,7 +159,7 @@ with tab1:
     col1, col2 = st.columns(2)
     with col1:
         st.write("**Dataset Quality Scores**")
-        fig1, ax1 = plt.subplots()
+        fig1, ax1 = plt.subplots(figsize=(6, 4))
         sns.barplot(data=rankings, x="Score", y="Dataset", palette="Blues_d", ax=ax1)
         st.pyplot(fig1)
 
@@ -192,14 +192,14 @@ with tab2:
     l, r = st.columns(2)
     with l:
         st.write("**Confusion Matrix**")
-        fig_cm, ax_cm = plt.subplots()
+        fig_cm, ax_cm = plt.subplots(figsize=(6, 4))
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax_cm)
         st.pyplot(fig_cm)
 
     with r:
         st.write("**Clinical Feature Weights**")
         coef = pd.Series(abs(model.coef_[0]), index=feature_names)
-        fig_fi, ax_fi = plt.subplots()
+        fig_fi, ax_fi = plt.subplots(figsize=(6, 4))
         coef.nlargest(10).plot(kind="barh", color="#004e92", ax=ax_fi)
         ax_fi.invert_yaxis()
         st.pyplot(fig_fi)
@@ -226,3 +226,4 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
