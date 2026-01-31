@@ -11,187 +11,180 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
 # ==========================================
-# 1. PAGE & THEME CONFIG
+# 1. PAGE CONFIG & UI THEME
 # ==========================================
-st.set_page_config(
-    page_title="HFR-MADM Intelligent Healthcare",
-    page_icon="🩺",
-    layout="wide"
-)
+st.set_page_config(page_title="HFR-MADM Healthcare", page_icon="🩺", layout="wide")
 
-# Custom Styling
 st.markdown("""
     <style>
-    .main { background-color: #f0f2f6; }
-    .stTabs [data-baseweb="tab-list"] { gap: 24px; }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
-        background-color: #ffffff;
-        border-radius: 4px 4px 0px 0px;
-        padding-top: 10px;
-        font-weight: bold;
-    }
-    .stTabs [aria-selected="true"] { background-color: #e1f5fe; border-bottom: 2px solid #01579b; }
+    .main { background-color: #f8f9fa; }
     div[data-testid="metric-container"] {
         background-color: #ffffff;
-        border: 1px solid #e0e0e0;
+        border: 1px solid #dee2e6;
         padding: 15px;
         border-radius: 10px;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
     }
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. LOGIC & PROCESSING (Combined)
+# 2. DATA PROCESSING LOGIC
 # ==========================================
 
-def load_datasets(data_folder="data"):
+def load_datasets(folder="data"):
     datasets = {}
-    if not os.path.exists(data_folder):
+    if not os.path.exists(folder):
+        os.makedirs(folder)
         return datasets
-
-    for file in os.listdir(data_folder):
+    
+    for file in os.listdir(folder):
         if file.endswith(".csv"):
             try:
-                df = pd.read_csv(os.path.join(data_folder, file))
-                df = df.dropna().drop_duplicates()
+                df = pd.read_csv(os.path.join(folder, file)).dropna()
+                # Clean column names
+                df.columns = [c.strip() for c in df.columns]
                 
+                # Encode text columns to numbers
                 le = LabelEncoder()
                 for col in df.columns:
-                    if not pd.api.types.is_numeric_dtype(df[col]):
+                    if df[col].dtype == 'object':
                         df[col] = le.fit_transform(df[col].astype(str))
                 
                 X = df.iloc[:, :-1]
                 y = df.iloc[:, -1]
-                if y.nunique() >= 2:
-                    datasets[file] = (X, y, df)
-            except:
-                continue
+                datasets[file] = (X, y, df)
+            except Exception as e:
+                st.error(f"Error loading {file}: {e}")
     return datasets
 
-def hfr_madm_logic(datasets):
-    # Hesitant Fuzzy Weights
-    weights = np.array([0.35, 0.25, 0.25, 0.15])
-    ranking_data = []
+def hfr_madm_ranking(datasets):
+    weights = np.array([0.35, 0.25, 0.25, 0.15]) # Volume, Balance, Features, Reliability
+    results = []
     for name, (X, y, _) in datasets.items():
-        f1 = min(len(X) / 1500, 1.0)
-        f2 = 1.0 - abs(0.5 - y.value_counts(normalize=True).iloc[0])
-        f3 = min(X.shape[1] / 25, 1.0)
-        f4 = 0.95
-        metrics = [f1, f2, f3, f4]
-        # Hesitant Range Logic
-        hesitant_values = [np.mean([m*0.9, m, min(m*1.1, 1.0)]) for m in metrics]
-        score = np.dot(hesitant_values, weights)
-        ranking_data.append({"Dataset": name, "Score": round(score, 4), "Samples": len(X), "Features": X.shape[1]})
-    return pd.DataFrame(ranking_data).sort_values(by="Score", ascending=False)
+        # Feature Extraction for MADM
+        f1 = min(len(X) / 1000, 1.0) # Volume
+        f2 = 1.0 - abs(0.5 - y.value_counts(normalize=True).iloc[0]) # Balance
+        f3 = min(X.shape[1] / 20, 1.0) # Feature Complexity
+        f4 = 0.95 # Reliability Constant
+        
+        # Hesitant Fuzzy Logic (Mean of uncertainty range)
+        score = np.dot([f1, f2, f3, f4], weights)
+        results.append({"Dataset": name, "Score": round(score, 4), "Samples": len(X), "Features": X.shape[1]})
+    
+    return pd.DataFrame(results).sort_values("Score", ascending=False)
 
-def train_competitive_models(X, y):
+def train_logic(X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     scaler = StandardScaler()
     X_train_s = scaler.fit_transform(X_train)
     X_test_s = scaler.transform(X_test)
     
-    # 1. Logistic Regression
+    # Logistic Regression
     lr = LogisticRegression(max_iter=1000)
     lr.fit(X_train_s, y_train)
     lr_acc = accuracy_score(y_test, lr.predict(X_test_s))
     
-    # 2. Random Forest
+    # Random Forest
     rf = RandomForestClassifier(n_estimators=100, random_state=42)
     rf.fit(X_train_s, y_train)
     rf_acc = accuracy_score(y_test, rf.predict(X_test_s))
     
-    # Selection Logic (Choose the winner)
+    # Select Winner
     if rf_acc >= lr_acc:
-        best_model, best_name, best_acc = rf, "Random Forest", rf_acc
+        best_model, m_name, m_acc = rf, "Random Forest", rf_acc
     else:
-        best_model, best_name, best_acc = lr, "Logistic Regression", lr_acc
+        best_model, m_name, m_acc = lr, "Logistic Regression", lr_acc
         
     preds = best_model.predict(X_test_s)
-    cm = confusion_matrix(y_test, preds)
     report = classification_report(y_test, preds, output_dict=True)
+    cm = confusion_matrix(y_test, preds)
     
-    return best_model, best_name, best_acc, lr_acc, rf_acc, cm, report, scaler, X.columns
+    return best_model, m_name, m_acc, lr_acc, rf_acc, report, cm, scaler
 
 # ==========================================
-# 3. SIDEBAR & DATA LOADING
+# 3. MAIN APP INTERFACE
 # ==========================================
-all_data = load_datasets("data")
-if not all_data:
-    st.error("No data found in 'data' folder.")
+st.title("🩺 HFR-MADM: Intelligent Disease Risk Framework")
+
+data_dict = load_datasets("data")
+
+if not data_dict:
+    st.warning("⚠️ No CSV files found in 'data' folder. Please upload datasets to continue.")
     st.stop()
 
-rankings = hfr_madm_logic(all_data)
-st.sidebar.title("🩺 Clinical Control")
-dataset_choice = st.sidebar.selectbox("📂 Select Dataset", options=list(all_data.keys()))
-st.sidebar.success(f"Top Ranked: {rankings.iloc[0]['Dataset']}")
+# Get Rankings
+rank_df = hfr_madm_ranking(data_dict)
+best_file = rank_df.iloc[0]["Dataset"]
 
-# ==========================================
-# 4. MAIN INTERFACE (Combined)
-# ==========================================
-st.title("🩺 HFR-MADM Intelligent Healthcare System")
-st.caption(f"Competitive Analysis for: {dataset_choice}")
+# Sidebar Selection
+st.sidebar.header("Settings")
+selected_file = st.sidebar.selectbox("📂 Select Dataset", list(data_dict.keys()))
+st.sidebar.info(f"Top Ranked Dataset: **{best_file}**")
 
-X_sel, y_sel, raw_df = all_data[dataset_choice]
-model, model_name, acc, lr_acc, rf_acc, cm, report, scaler, feature_names = train_competitive_models(X_sel, y_sel)
+# Training
+X, y, raw_df = data_dict[selected_file]
+model, model_name, acc, lr_acc, rf_acc, report, cm, scaler = train_logic(X, y)
 
-tab1, tab2, tab3 = st.tabs(["📊 Dataset Ranking", "🧪 Model Competition", "🔍 Patient Predictor"])
+# TABS
+t1, t2, t3 = st.tabs(["📊 Quality Analysis", "🧪 Model Competition", "🔍 Prediction Tool"])
 
-with tab1:
-    st.subheader("HFR-MADM Evaluation Results")
-    st.dataframe(rankings.style.highlight_max(subset=['Score']), use_container_width=True)
+with t1:
+    st.subheader("HFR-MADM Dataset Quality Ranking")
+    st.dataframe(rank_df.style.highlight_max(axis=0, subset=['Score']), use_container_width=True)
     
-    c1, c2 = st.columns(2)
-    with c1:
+    col1, col2 = st.columns(2)
+    with col1:
         fig1, ax1 = plt.subplots()
-        sns.barplot(data=rankings, x="Score", y="Dataset", palette="viridis", ax=ax1)
+        sns.barplot(x="Score", y="Dataset", data=rank_df, palette="magma", ax=ax1)
         st.pyplot(fig1)
-    with c2:
-        # Pie Chart from Logic 2
+    with col2:
+        # Risk Distribution Pie Chart
         fig2, ax2 = plt.subplots()
-        counts = y_sel.value_counts()
-        ax2.pie(counts, labels=["Low Risk", "High Risk"], autopct='%1.1f%%', colors=['#66b3ff','#ff9999'])
+        y.value_counts().plot.pie(autopct='%1.1f%%', labels=["Low Risk", "High Risk"], colors=['#74c476','#fb6a4a'], ax=ax2)
+        ax2.set_ylabel("")
         st.pyplot(fig2)
 
-with tab2:
-    st.subheader("Algorithm Competition: LR vs RF")
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Logistic Regression", f"{lr_acc:.2%}")
-    m2.metric("Random Forest", f"{rf_acc:.2%}")
-    m3.metric("WINNING MODEL", model_name)
+with t2:
+    st.subheader("Algorithm Accuracy Comparison")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Logistic Regression", f"{lr_acc:.2%}")
+    c2.metric("Random Forest", f"{rf_acc:.2%}")
+    c3.metric("Selected Winner", model_name)
     
     st.markdown("---")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.markdown("**Confusion Matrix (Winner)**")
-        fig_cm, ax_cm = plt.subplots()
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax_cm)
-        st.pyplot(fig_cm)
-    with col_b:
-        st.markdown("**Performance Report**")
+    res_l, res_r = st.columns(2)
+    with res_l:
+        st.markdown("**Confusion Matrix**")
+        fig3, ax3 = plt.subplots()
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax3)
+        st.pyplot(fig3)
+    with res_r:
+        st.markdown("**Classification Report**")
         st.table(pd.DataFrame(report).transpose().iloc[:-3, :].style.format("{:.2%}"))
 
-with tab3:
-    st.subheader("🔍 Real-Time Patient Diagnosis")
-    st.info(f"Currently powered by: **{model_name}**")
+with t3:
+    st.subheader("Patient Risk Diagnosis Form")
+    st.write(f"This diagnosis is currently generated using the **{model_name}** model.")
     
-    with st.form("diag_form"):
+    # Dynamic Form
+    with st.form("input_form"):
         cols = st.columns(3)
-        user_input = []
-        for i, col_name in enumerate(feature_names):
+        inputs = []
+        for i, col_name in enumerate(X.columns):
             with cols[i % 3]:
-                val = st.number_input(f"{col_name}", value=float(raw_df[col_name].median()))
-                user_input.append(val)
+                # Use median as default value to avoid errors
+                val = st.number_input(f"{col_name}", value=float(X[col_name].median()))
+                inputs.append(val)
         
-        btn = st.form_submit_button("Generate Prediction", use_container_width=True)
-        if btn:
-            input_s = scaler.transform(np.array(user_input).reshape(1, -1))
-            res = model.predict(input_s)[0]
-            prob = model.predict_proba(input_s)[0]
+        submit = st.form_submit_button("Predict Risk Status", use_container_width=True)
+        
+        if submit:
+            final_input = scaler.transform(np.array(inputs).reshape(1, -1))
+            prediction = model.predict(final_input)[0]
+            probs = model.predict_proba(final_input)[0]
             
-            if res == 1:
-                st.error(f"### ⚠️ HIGH RISK DETECTED\nConfidence: {max(prob):.2%}")
+            st.markdown("---")
+            if prediction == 1:
+                st.error(f"### ⚠️ Result: HIGH RISK ({max(probs):.2%} confidence)")
             else:
-                st.success(f"### ✅ LOW RISK DETECTED\nConfidence: {max(prob):.2%}")
+                st.success(f"### ✅ Result: LOW RISK ({max(probs):.2%} confidence)")
