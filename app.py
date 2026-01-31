@@ -135,8 +135,44 @@ tab1, tab2, tab3 = st.tabs(["📊 Evaluation", "📈 Metrics", "🔍 Risk Predic
 
 # ---------- TAB 1 ----------
 with tab1:
-    st.subheader("Dataset Quality Ranking")
-    st.dataframe(rankings, use_container_width=True)
+    st.subheader("HFR-MADM Dataset Quality Ranking")
+    st.write("Ranking based on volume, balance, feature richness, and reliability.")
+
+    st.dataframe(
+        rankings.style.highlight_max(axis=0, subset=["Score"]),
+        use_container_width=True
+    )
+
+    col1, col2 = st.columns(2)
+
+    # ---- Quality Score Comparison ----
+    with col1:
+        st.markdown("### 📊 Quality Score Comparison")
+        fig1, ax1 = plt.subplots()
+        sns.barplot(
+            data=rankings,
+            x="Score",
+            y="Dataset",
+            ax=ax1
+        )
+        ax1.set_xlabel("Quality Score")
+        ax1.set_ylabel("Dataset")
+        st.pyplot(fig1)
+
+    # ---- Dataset Size Comparison ----
+    with col2:
+        st.markdown("### 📦 Dataset Size Comparison")
+        fig2, ax2 = plt.subplots()
+        sns.barplot(
+            data=rankings,
+            x="Samples",
+            y="Dataset",
+            ax=ax2
+        )
+        ax2.set_xlabel("Number of Samples")
+        ax2.set_ylabel("Dataset")
+        st.pyplot(fig2)
+
 
 # ---------- TAB 2 ----------
 with tab2:
@@ -177,3 +213,4 @@ with tab3:
             st.error(f"⚠️ HIGH RISK (Confidence: {probability:.2%})")
         else:
             st.success(f"✅ LOW RISK (Confidence: {probability:.2%})")
+
