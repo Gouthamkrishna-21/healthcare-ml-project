@@ -138,13 +138,31 @@ with tab1:
         sns.barplot(data=rankings, x="Score", y="Dataset", palette="Blues_d", ax=ax1)
         st.pyplot(fig1)
     with col2:
-        st.write("**Risk Distribution (Actual Labels)**")
-        fig2, ax2 = plt.subplots()
+        st.markdown('<div class="plot-holder">', unsafe_allow_html=True)
+        st.write("**Risk Distribution**")
+        
+        # --- SMART PIE CHART LOGIC ---
+        fig2, ax2 = plt.subplots(figsize=(6, 4))
         counts = y_sel.value_counts()
-        labels = ["Low Risk", "High Risk"][:len(counts)]
-        ax2.pie(counts, labels=labels, autopct='%1.1f%%', colors=['#4A90E2', '#D0021B'], startangle=90)
+        
+        # 1. Dynamically create labels based on actual data present
+        # If index is 0 -> Low Risk, if index is 1 -> High Risk
+        labels_map = {0: "Low Risk", 1: "High Risk"}
+        actual_labels = [labels_map.get(i, f"Class {i}") for i in counts.index]
+        
+        # 2. Match colors to the number of classes found
+        color_palette = ['#4A90E2', '#D0021B']
+        actual_colors = color_palette[:len(counts)]
+        
+        ax2.pie(counts, 
+                labels=actual_labels, 
+                autopct='%1.1f%%', 
+                colors=actual_colors, 
+                startangle=90)
+        
+        plt.tight_layout()
         st.pyplot(fig2)
-
+        st.markdown('</div>', unsafe_allow_html=True)
 with tab2:
     st.markdown("### **Logistic Regression Metrics**")
     m1, m2, m3 = st.columns(3)
@@ -187,3 +205,4 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
