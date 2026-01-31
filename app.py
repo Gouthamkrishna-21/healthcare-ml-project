@@ -232,13 +232,14 @@ with tab3:
         autopct='%1.1f%%',
         startangle=90,
         colors=colors,
-        radius=0.8,
-        textprops={'fontsize': 8}
+        radius= 1.0,
+        textprops={'fontsize': 7}, # Smaller font for smaller chart
         wedgeprops={'edgecolor': 'white', 'linewidth': 1}
     )
     ax_pie.axis('equal')
-    plt.tight_layout() 
-    st.pyplot(fig_pie)
+    
+    st.pyplot(fig_pie, bbox_inches='tight')
+    plt.close(fig_pie)
     # ----------------------------------------
 
     with st.form("clinical_form"):
@@ -259,6 +260,7 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
 
 
 
