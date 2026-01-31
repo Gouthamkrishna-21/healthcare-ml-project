@@ -181,16 +181,41 @@ with tab2:
     col2.metric("Weighted F1 Score", f"{report['weighted avg']['f1-score']:.2%}")
     col3.metric("Test Samples", int(report['macro avg']['support']))
 
-    st.markdown("### Confusion Matrix")
-    fig, ax = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
-    st.pyplot(fig)
+    st.markdown("---")
 
-    st.markdown("### Feature Impact (Logistic Coefficients)")
-    coef = pd.Series(abs(model.coef_[0]), index=feature_names)
-    fig2, ax2 = plt.subplots()
-    coef.nlargest(10).plot(kind="barh", ax=ax2)
-    st.pyplot(fig2)
+    # Side-by-side layout
+    left, right = st.columns(2)
+
+    # ---- Confusion Matrix (smaller + clean colors) ----
+    with left:
+        st.markdown("### 🧮 Confusion Matrix")
+        fig_cm, ax_cm = plt.subplots(figsize=(4, 3))
+        sns.heatmap(
+            cm,
+            annot=True,
+            fmt="d",
+            cmap="Blues",
+            cbar=False,
+            linewidths=0.5,
+            ax=ax_cm
+        )
+        ax_cm.set_xlabel("Predicted")
+        ax_cm.set_ylabel("Actual")
+        st.pyplot(fig_cm)
+
+    # ---- Feature Impact (Logistic Coefficients) ----
+    with right:
+        st.markdown("### 📊 Feature Impact")
+        coef = pd.Series(abs(model.coef_[0]), index=feature_names)
+        fig_fi, ax_fi = plt.subplots(figsize=(4, 3))
+        coef.nlargest(10).plot(
+            kind="barh",
+            color="#00838f",
+            ax=ax_fi
+        )
+        ax_fi.set_xlabel("Impact Strength")
+        ax_fi.invert_yaxis()
+        st.pyplot(fig_fi)
 
 # ---------- TAB 3 ----------
 with tab3:
@@ -213,4 +238,5 @@ with tab3:
             st.error(f"⚠️ HIGH RISK (Confidence: {probability:.2%})")
         else:
             st.success(f"✅ LOW RISK (Confidence: {probability:.2%})")
+
 
