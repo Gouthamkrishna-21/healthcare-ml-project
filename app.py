@@ -14,21 +14,58 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 # 1. PAGE CONFIG
 # ==========================================
 st.set_page_config(
-    page_title="HFR-MADM Healthcare System",
+    page_title="Hesitant Fuzzy Rough Healthcare Prediction",
     page_icon="🩺",
     layout="wide"
 )
 
 st.markdown("""
 <style>
-.main { background-color: #f0f2f6; }
+/* Page background */
+.main {
+    background-color: #f6f8fc;
+}
+
+/* Header title */
+.app-title {
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 4px;
+}
+
+/* Subtitle */
+.app-subtitle {
+    color: #6c757d;
+    font-size: 15px;
+    margin-bottom: 20px;
+}
+
+/* Tabs styling */
 .stTabs [data-baseweb="tab"] {
     background-color: white;
-    padding: 10px;
-    font-weight: bold;
+    padding: 10px 18px;
+    font-weight: 600;
+    border-radius: 8px 8px 0 0;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: #e3f2fd;
 }
 </style>
 """, unsafe_allow_html=True)
+
+# ==========================================
+# HEADER CONTENT
+# ==========================================
+st.markdown(
+    """
+    <div class="app-title">🧬 Hesitant Fuzzy Rough Healthcare Prediction</div>
+    <div class="app-subtitle">
+        Analyzing Source: <b>{}</b>
+    </div>
+    """.format(dataset_choice),
+    unsafe_allow_html=True
+)
 
 # ==========================================
 # 2. LOAD DATASETS
@@ -238,5 +275,6 @@ with tab3:
             st.error(f"⚠️ HIGH RISK (Confidence: {probability:.2%})")
         else:
             st.success(f"✅ LOW RISK (Confidence: {probability:.2%})")
+
 
 
