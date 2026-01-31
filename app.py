@@ -219,6 +219,25 @@ with tab3:
     st.markdown("### **Patient Risk Predictor**")
     st.info("Input clinical parameters to generate a risk probability score.")
 
+    # ---- Add Pie Chart for Overall Risk ----
+    risk_counts = y_sel.value_counts()
+    labels = ['Low Risk', 'High Risk']
+    sizes = [risk_counts.get(0, 0), risk_counts.get(1, 0)]
+    colors = ['#4A90E2', '#E53935']  # Blue for low, red for high
+
+    fig_pie, ax_pie = plt.subplots()
+    ax_pie.pie(
+        sizes,
+        labels=labels,
+        autopct='%1.1f%%',
+        startangle=90,
+        colors=colors,
+        wedgeprops={'edgecolor': 'white'}
+    )
+    ax_pie.axis('equal')
+    st.pyplot(fig_pie)
+    # ----------------------------------------
+
     with st.form("clinical_form"):
         cols = st.columns(3)
         inputs = []
@@ -237,3 +256,4 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
