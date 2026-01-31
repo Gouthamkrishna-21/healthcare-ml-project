@@ -193,7 +193,7 @@ with tab1:
         st.pyplot(fig2)
 
 with tab2:
-    st.markdown("### **Logistic Regression Metrics**")
+    st.markdown("### **Metrics**")
     m1, m2, m3 = st.columns(3)
     m1.metric("Diagnostic Accuracy", f"{acc:.2%}")
     m2.metric("Weighted F1-Score", f"{report['weighted avg']['f1-score']:.2%}")
@@ -237,6 +237,7 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
 
 
 
