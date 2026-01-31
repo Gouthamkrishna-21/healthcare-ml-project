@@ -166,15 +166,14 @@ with tab1:
     with col2:
         st.write("**Dataset Size vs Feature Count**")
         fig2, ax2 = plt.subplots(figsize=(6, 4))
-
-
-       sns.barplot(
-        data=rankings,
-        x="Samples",
-        y="Dataset",
-        ax=ax2,
-        palette="Blues_d"
-    )
+        
+        sns.barplot(
+            data=rankings,
+            x="Samples",
+            y="Dataset",
+            ax=ax2,
+            palette="Blues_d"
+        )
 
     ax2.set_xlabel("Number of Samples")
     ax2.set_ylabel("Dataset")
@@ -226,6 +225,7 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
 
 
 
