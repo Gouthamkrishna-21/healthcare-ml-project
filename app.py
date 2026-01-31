@@ -164,28 +164,30 @@ with tab1:
         st.pyplot(fig1)
 
     with col2:
-        st.write("**Dataset Size vs Feature Count**")
-        fig2, ax2 = plt.subplots(figsize=(6, 4))
-        ax2.scatter(
-            rankings["Samples"],
-            rankings["Features"],
-            s=120,
-           alpha=0.8
-       )
+    st.write("**Dataset Size vs Feature Count**")
 
+    fig2, ax2 = plt.subplots(figsize=(6, 4))
 
-       for i, name in enumerate(rankings["Dataset"]):
-       ax2.text(
-        rankings["Samples"].iloc[i],
-        rankings["Features"].iloc[i],
-        name.replace(".csv", ""),
-        fontsize=8
-      )
+    ax2.scatter(
+        rankings["Samples"],
+        rankings["Features"],
+        s=120,
+        alpha=0.8
+    )
 
-      ax2.set_xlabel("Number of Samples")
-      ax2.set_ylabel("Number of Features")
+    for i, name in enumerate(rankings["Dataset"]):
+        ax2.text(
+            rankings["Samples"].iloc[i],
+            rankings["Features"].iloc[i],
+            name.replace(".csv", ""),
+            fontsize=8
+        )
 
-     st.pyplot(fig2)
+    ax2.set_xlabel("Number of Samples")
+    ax2.set_ylabel("Number of Features")
+
+    st.pyplot(fig2)
+
 
 with tab2:
     st.markdown("### **Logistic Regression Metrics**")
@@ -232,5 +234,6 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
 
 
