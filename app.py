@@ -225,16 +225,19 @@ with tab3:
     sizes = [risk_counts.get(0, 0), risk_counts.get(1, 0)]
     colors = ['#4A90E2', '#E53935']  # Blue for low, red for high
 
-    fig_pie, ax_pie = plt.subplots(figsize=(6, 4))
+    fig_pie, ax_pie = plt.subplots(figsize=(4,3))
     ax_pie.pie(
         sizes,
         labels=labels,
         autopct='%1.1f%%',
         startangle=90,
         colors=colors,
-        wedgeprops={'edgecolor': 'white'}
+        radius=0.8,
+        textprops={'fontsize': 8}
+        wedgeprops={edgecolor': 'white', 'linewidth': 1}
     )
     ax_pie.axis('equal')
+    plt.tight_layout() 
     st.pyplot(fig_pie)
     # ----------------------------------------
 
@@ -256,5 +259,6 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
 
 
