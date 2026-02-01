@@ -203,26 +203,36 @@ tab1, tab2, tab3 = st.tabs(
 )
 
 with tab1:
+    # 1. Ranking Table (Kept at top as it's the core logic)
     st.markdown("### **HFR-MADM Quality Ranking**")
     st.dataframe(
         rankings.style
         .background_gradient(cmap="Blues", subset=["Score"])
         .format({"Score": "{:.3f}"}),
-    use_container_width=True,
-    hide_index=True
+        use_container_width=True,
+        hide_index=True
     )
-    st.markdown("### 📂 Selected Dataset Preview")
-    st.dataframe(raw_df.head(), use_container_width=True)
 
+    st.markdown("---")
+
+    # 2. Dataset Metrics Row (Moved UP to show summary immediately)
+    st.markdown("#### 📊 Selected Dataset Overview")
     c1, c2, c3 = st.columns(3)
-    c1.metric("Rows", raw_df.shape[0])
-    c2.metric("Columns", raw_df.shape[1])
-    c3.metric("Missing Values", raw_df.isnull().sum().sum())
+    c1.metric("Total Samples (Rows)", f"{raw_df.shape[0]}")
+    c2.metric("Feature Count (Columns)", f"{raw_df.shape[1]}")
+    c3.metric("Missing Data Points", f"{raw_df.isnull().sum().sum()}")
 
+    # 3. Collapsible Preview (Keeps the UI clean)
+    with st.expander("📂 Click to Preview Selected Raw Data"):
+        st.dataframe(raw_df.head(10), use_container_width=True)
+
+    st.markdown("---")
+
+    # 4. Visualization Row
     col1, col2 = st.columns(2)
 
     with col1:
-        st.write("**Dataset Quality Scores**")
+        st.write("**HFR-MADM Performance Scores**")
         fig1, ax1 = plt.subplots(figsize=(6, 4))
         sns.barplot(
             data=rankings,
@@ -232,11 +242,11 @@ with tab1:
             ax=ax1
         )
         st.pyplot(fig1)
+        plt.close(fig1)
 
     with col2:
-        st.write("**Dataset Size vs Feature Count**")
+        st.write("**Dataset Scale Comparison**")
         fig2, ax2 = plt.subplots(figsize=(6, 4))
-
         sns.barplot(
             data=rankings,
             x="Samples",
@@ -244,12 +254,9 @@ with tab1:
             palette="Blues_d",
             ax=ax2
         )
-
         ax2.set_xlabel("Number of Samples")
-        ax2.set_ylabel("Dataset")
-
         st.pyplot(fig2)
-
+        plt.close(fig2)
 with tab2:
     st.markdown("### **Metrics**")
     m1, m2, m3 = st.columns(3)
@@ -330,6 +337,7 @@ with tab3:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
             st.toast("Analysis Complete: Low Risk Detected", icon='✅')
    
+
 
 
 
