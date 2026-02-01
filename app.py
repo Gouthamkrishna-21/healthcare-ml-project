@@ -206,6 +206,13 @@ with tab1:
     use_container_width=True,
     hide_index=True
     )
+    st.markdown("### 📂 Selected Dataset Preview")
+    st.dataframe(raw_df.head(), use_container_width=True)
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Rows", raw_df.shape[0])
+    c2.metric("Columns", raw_df.shape[1])
+    c3.metric("Missing Values", raw_df.isnull().sum().sum())
 
     col1, col2 = st.columns(2)
 
@@ -318,6 +325,7 @@ with tab3:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
             st.toast("Analysis Complete: Low Risk Detected", icon='✅')
    
+
 
 
 
