@@ -215,25 +215,20 @@ with tab1:
 
     st.markdown("---")
 
-    # 2. Balanced 2-Column Metrics (Matches image_4d2abf.png)
+    # 2. Simple Metrics (Only Rows and Columns)
     st.markdown("### 📊 Dataset Overview")
     c1, c2 = st.columns(2)
-    with c1:
-        st.metric("Total Rows", f"{raw_df.shape[0]}")
-    with c2:
-        st.metric("Total Columns", f"{raw_df.shape[1]}")
+    c1.metric("Total Rows", f"{raw_df.shape[0]}")
+    c2.metric("Total Columns", f"{raw_df.shape[1]}")
 
-    # 3. Hidden Preview (Matches your request for "click to see")
+    # 3. Hidden Preview (Only visible when clicked)
     with st.expander("📂 Click to see Dataset Preview"):
         st.dataframe(raw_df.head(10), use_container_width=True)
 
     st.markdown("---")
 
-    # 4. Visualizations with Matched Interface Colors
+    # 4. Visualizations
     col1, col2 = st.columns(2)
-
-    # We define a color that matches your #004e92 sidebar blue
-    interface_blue = "#004e92"
 
     with col1:
         st.write("**Dataset Quality Scores**")
@@ -242,26 +237,23 @@ with tab1:
             data=rankings,
             x="Score",
             y="Dataset",
-            color=interface_blue,  # Matches the sidebar exactly
+            palette="Blues_d",
             ax=ax1
         )
-        # Clean up chart aesthetics
-        sns.despine()
         st.pyplot(fig1)
         plt.close(fig1)
 
     with col2:
-        st.write("**Dataset Size Comparison**")
+        st.write("**Dataset Size vs Feature Count**")
         fig2, ax2 = plt.subplots(figsize=(6, 4))
         sns.barplot(
             data=rankings,
             x="Samples",
             y="Dataset",
-            color=interface_blue, # Matches the sidebar exactly
+            palette="Blues_d",
             ax=ax2
         )
         ax2.set_xlabel("Number of Samples")
-        sns.despine()
         st.pyplot(fig2)
         plt.close(fig2)
 with tab2:
@@ -344,6 +336,7 @@ with tab3:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
             st.toast("Analysis Complete: Low Risk Detected", icon='✅')
    
+
 
 
 
