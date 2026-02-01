@@ -55,20 +55,25 @@ input[data-testid="stWidgetInput-selectbox"] {
     -webkit-text-fill-color: black !important;
 }
 
-/* Sidebar Glass Cards - FORCING WHITE TEXT */
+/* Sidebar Glass Cards - High Contrast */
 .sidebar-card {
     background-color: rgba(255, 255, 255, 0.15) !important;
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(10px);
     padding: 16px;
     border-radius: 15px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     margin-bottom: 1rem;
-    color: white !important; /* This ensures regular text is white */
+    color: white !important; 
 }
 
-/* This targets the bold <b> tags specifically (Database Access, etc.) */
+/* Force specific tags like <b> to be white */
 .sidebar-card b, .sidebar-card span, .sidebar-card div {
     color: white !important;
+}
+
+/* Keep the dropdown text black so it's readable in the white box */
+div[data-baseweb="select"] > div {
+    color: black !important;
 }
 
 /* Gold Rank Badge */
@@ -325,6 +330,7 @@ with tab3:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
             st.toast("Analysis Complete: Low Risk Detected", icon='✅')
    
+
 
 
 
