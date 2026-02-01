@@ -318,11 +318,12 @@ with tab3:
 
         if res == 1:
             st.error(f"### ⚠️ INDIVIDUAL DIAGNOSIS: HIGH RISK\nPersonalized Confidence: {prob:.2%}")
+            st.warning("**Recommendation:** Clinical intervention and further diagnostic testing recommended.")
         else:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
-        
-        st.balloons() if res == 0 else st.warning("Clinical intervention recommended.")
+            st.toast("Analysis Complete: Low Risk Detected", icon='✅')
    
+
 
 
 
