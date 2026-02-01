@@ -185,7 +185,6 @@ st.sidebar.markdown(
 )
 st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
-
 # ==========================================
 # 4. MAIN INTERFACE
 # ==========================================
@@ -271,47 +270,60 @@ with tab3:
     st.markdown("### **Patient Risk Predictor**")
     st.info("Input clinical parameters to generate a risk probability score.")
 
-    # ---- Add Pie Chart for Overall Risk ----
-    risk_counts = y_sel.value_counts()
-    labels = ['Low Risk', 'High Risk']
-    sizes = [risk_counts.get(0, 0), risk_counts.get(1, 0)]
-    colors = ['#4A90E2', '#E53935']  # Blue for low, red for high
+    # We create two columns: Left for the Form, Right for the Overall Context
+    form_col, info_col = st.columns([2, 1])
 
-    fig_pie, ax_pie = plt.subplots(figsize=(4,3))
-    ax_pie.pie(
-        sizes,
-        labels=labels,
-        autopct='%1.1f%%',
-        startangle=90,
-        colors=colors,
-        radius= 1.0,
-        textprops={'fontsize': 7}, # Smaller font for smaller chart
-        wedgeprops={'edgecolor': 'white', 'linewidth': 1}
-    )
-    ax_pie.axis('equal')
-    
-    st.pyplot(fig_pie, bbox_inches='tight')
-    plt.close(fig_pie)
-    # ----------------------------------------
+    with info_col:
+        st.write("**Overall Dataset Risk Context**")
+        # ---- Small Pie Chart for Overall Risk ----
+        risk_counts = y_sel.value_counts()
+        labels = ['Low Risk', 'High Risk']
+        sizes = [risk_counts.get(0, 0), risk_counts.get(1, 0)]
+        colors = ['#4A90E2', '#E53935'] 
 
-    with st.form("clinical_form"):
-        cols = st.columns(3)
-        inputs = []
-        for i, col in enumerate(feature_names):
-            with cols[i % 3]:
-                inputs.append(
-                    st.number_input(col, float(raw_df[col].median()))
-                )
+        fig_pie, ax_pie = plt.subplots(figsize=(3, 2))
+        ax_pie.pie(
+            sizes,
+            labels=labels,
+            autopct='%1.1f%%',
+            startangle=90,
+            colors=colors,
+            radius=1.0,
+            textprops={'fontsize': 7},
+            wedgeprops={'edgecolor': 'white', 'linewidth': 1}
+        )
+        ax_pie.axis('equal')
+        st.pyplot(fig_pie, bbox_inches='tight')
+        plt.close(fig_pie)
+        st.caption("This chart shows the distribution of the entire dataset.")
 
-        if st.form_submit_button("Generate Prediction", use_container_width=True):
-            input_scaled = scaler.transform(np.array(inputs).reshape(1, -1))
-            res = model.predict(input_scaled)[0]
-            prob = model.predict_proba(input_scaled).max()
+    with form_col:
+        with st.form("clinical_form"):
+            cols = st.columns(2) # Two columns for form fields to save space
+            inputs = []
+            for i, col in enumerate(feature_names):
+                with cols[i % 2]:
+                    # Added min_value=0.0 so any value can be entered
+                    inputs.append(
+                        st.number_input(col, value=float(raw_df[col].median()), min_value=0.0)
+                    )
 
-            if res == 1:
-                st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
-            else:
-                st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+            submit = st.form_submit_button("Generate Individual Prediction", use_container_width=True)
+
+    if submit:
+        st.divider()
+        input_scaled = scaler.transform(np.array(inputs).reshape(1, -1))
+        res = model.predict(input_scaled)[0]
+        prob = model.predict_proba(input_scaled).max()
+
+        if res == 1:
+            st.error(f"### ⚠️ INDIVIDUAL DIAGNOSIS: HIGH RISK\nPersonalized Confidence: {prob:.2%}")
+        else:
+            st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
+        
+        st.balloons() if res == 0 else st.warning("Clinical intervention recommended.")
+   
+
 
 
 
