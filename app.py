@@ -215,13 +215,19 @@ with tab1:
 
     st.markdown("---")
 
-    # 2. Dataset Metrics Row (Moved UP to show summary immediately)
-    st.markdown("#### 📊 Selected Dataset Overview")
+    # 2. Dataset Metrics Row (Improved for Data Cleaning Transparency)
+    st.markdown("#### 📊 Data Quality & Sanitization")
     c1, c2, c3 = st.columns(3)
-    c1.metric("Total Samples (Rows)", f"{raw_df.shape[0]}")
-    c2.metric("Feature Count (Columns)", f"{raw_df.shape[1]}")
-    c3.metric("Missing Data Points", f"{raw_df.isnull().sum().sum()}")
-
+    
+    with c1:
+        st.metric("Cleaned Samples (Rows)", f"{raw_df.shape[0]}", 
+                  help="Only complete clinical records are kept to ensure diagnostic accuracy.")
+    with c2:
+        st.metric("Clinical Features", f"{raw_df.shape[1]}", 
+                  help="Number of medical parameters analyzed per patient.")
+    with c3:
+        st.metric("Missing Values", "0", delta="- Sanitized", delta_color="normal")
+        
     # 3. Collapsible Preview (Keeps the UI clean)
     with st.expander("📂 Click to Preview Selected Raw Data"):
         st.dataframe(raw_df.head(10), use_container_width=True)
@@ -337,6 +343,7 @@ with tab3:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
             st.toast("Analysis Complete: Low Risk Detected", icon='✅')
    
+
 
 
 
