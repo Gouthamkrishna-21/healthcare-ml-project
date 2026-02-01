@@ -203,7 +203,7 @@ tab1, tab2, tab3 = st.tabs(
 )
 
 with tab1:
-    # 1. HFR-MADM Table
+    # 1. Ranking Table
     st.markdown("### **HFR-MADM Quality Ranking**")
     st.dataframe(
         rankings.style
@@ -215,16 +215,15 @@ with tab1:
 
     st.markdown("---")
 
-    # 2. Simple Metrics (Shows 158 rows directly)
+    # 2. Simple Metrics (Only Rows and Columns)
     st.markdown("### 📊 Dataset Overview")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Rows", f"{raw_df.shape[0]}")
-    c2.metric("Columns", f"{raw_df.shape[1]}")
-    c3.metric("Missing Values", f"{raw_df.isnull().sum().sum()}")
+    c1, c2 = st.columns(2)
+    c1.metric("Total Rows", f"{raw_df.shape[0]}")
+    c2.metric("Total Columns", f"{raw_df.shape[1]}")
 
-    # 3. Simple Preview
-    st.markdown("### 📂 Selected Dataset Preview")
-    st.dataframe(raw_df.head(), use_container_width=True)
+    # 3. Hidden Preview (Only visible when clicked)
+    with st.expander("📂 Click to see Dataset Preview"):
+        st.dataframe(raw_df.head(10), use_container_width=True)
 
     st.markdown("---")
 
@@ -337,6 +336,7 @@ with tab3:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
             st.toast("Analysis Complete: Low Risk Detected", icon='✅')
    
+
 
 
 
