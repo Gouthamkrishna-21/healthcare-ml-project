@@ -12,24 +12,19 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 # ==========================================
 # 1. ADVANCED UI CONFIGURATION
 # ==========================================
-# ==========================================
-# 1. ADVANCED UI CONFIGURATION
-# ==========================================
 st.set_page_config(
     page_title="HFR-MADM Clinical Portal",
     page_icon="🩺",
     layout="wide"
 )
 
-# Deep Medical Blue Theme - High Priority CSS
+# Deep Medical Blue Theme with Visible Dropdown Text
 st.markdown("""
 <style>
-/* 1. Main App Background */
-.stApp {
-    background-color: #f8f9fa;
-}
+/* 1. Main Background */
+.stApp { background-color: #f8f9fa; }
 
-/* 2. Custom Header Card */
+/* 2. Custom Header */
 .main-header {
     background: linear-gradient(90deg, #002b5b 0%, #004e92 100%);
     padding: 2rem;
@@ -40,31 +35,27 @@ st.markdown("""
 }
 
 /* 3. FORCED SIDEBAR THEME */
-/* Targets the sidebar container directly with high priority */
 [data-testid="stSidebar"] {
     background-image: linear-gradient(180deg, #002b5b 0%, #004e92 100%) !important;
     background-color: #002b5b !important;
-    border-right: 1px solid #001a35 !important;
 }
 
-/* Force all text in sidebar to be white for readability */
-[data-testid="stSidebar"] .stMarkdown p, 
-[data-testid="stSidebar"] label, 
-[data-testid="stSidebar"] div,
-[data-testid="stSidebar"] span {
+/* Force Sidebar labels to be white */
+[data-testid="stSidebar"] label, .sidebar-title {
     color: white !important;
+    font-weight: 700 !important;
 }
 
-.sidebar-title {
-    color: #ffffff !important;
-    text-align: center;
-    font-size: 1.3rem;
-    font-weight: 800;
-    margin-bottom: 1.5rem;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+/* FIX: Force Dataset Selection text to be BLACK */
+div[data-baseweb="select"] > div {
+    color: black !important;
+}
+input[data-testid="stWidgetInput-selectbox"] {
+    color: black !important;
+    -webkit-text-fill-color: black !important;
 }
 
-/* Sidebar Cards - Glass Effect */
+/* Sidebar Glass Cards */
 .sidebar-card {
     background-color: rgba(255, 255, 255, 0.12) !important;
     backdrop-filter: blur(12px);
@@ -72,10 +63,9 @@ st.markdown("""
     border-radius: 15px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     margin-bottom: 1rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-/* Vibrant Gold Rank Badge */
+/* Gold Rank Badge */
 .rank-badge {
     background: linear-gradient(90deg, #ffd700 0%, #ffae00 100%) !important;
     color: #002b5b !important;
@@ -83,30 +73,14 @@ st.markdown("""
     border-radius: 12px;
     font-weight: 700;
     text-align: center;
-    box-shadow: 0 4px 15px rgba(255, 174, 0, 0.4);
 }
 
-/* 4. Global UI Elements (Tabs & Metrics) */
+/* 4. Tabs & Metrics */
 div[data-testid="stMetric"] {
     background-color: white;
     padding: 20px;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    border: 1px solid #edf2f7;
-}
-
-.stTabs [data-baseweb="tab-list"] { gap: 10px; }
-.stTabs [data-baseweb="tab"] {
-    height: 48px;
-    background-color: white;
-    border-radius: 10px 10px 0 0;
-    padding: 10px 30px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-.stTabs [aria-selected="true"] {
-    background-color: #004e92 !important;
-    color: white !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -338,6 +312,7 @@ with tab3:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
             st.toast("Analysis Complete: Low Risk Detected", icon='✅')
    
+
 
 
 
