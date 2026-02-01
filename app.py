@@ -203,7 +203,7 @@ tab1, tab2, tab3 = st.tabs(
 )
 
 with tab1:
-    # 1. Ranking Table (Kept at top as it's the core logic)
+    # 1. HFR-MADM Table
     st.markdown("### **HFR-MADM Quality Ranking**")
     st.dataframe(
         rankings.style
@@ -215,30 +215,24 @@ with tab1:
 
     st.markdown("---")
 
-    # 2. Dataset Metrics Row (Improved for Data Cleaning Transparency)
-    st.markdown("#### 📊 Data Quality & Sanitization")
+    # 2. Simple Metrics (Shows 158 rows directly)
+    st.markdown("### 📊 Dataset Overview")
     c1, c2, c3 = st.columns(3)
-    
-    with c1:
-        st.metric("Cleaned Samples (Rows)", f"{raw_df.shape[0]}", 
-                  help="Only complete clinical records are kept to ensure diagnostic accuracy.")
-    with c2:
-        st.metric("Clinical Features", f"{raw_df.shape[1]}", 
-                  help="Number of medical parameters analyzed per patient.")
-    with c3:
-        st.metric("Missing Values", "0", delta="- Sanitized", delta_color="normal")
-        
-    # 3. Collapsible Preview (Keeps the UI clean)
-    with st.expander("📂 Click to Preview Selected Raw Data"):
-        st.dataframe(raw_df.head(10), use_container_width=True)
+    c1.metric("Rows", f"{raw_df.shape[0]}")
+    c2.metric("Columns", f"{raw_df.shape[1]}")
+    c3.metric("Missing Values", f"{raw_df.isnull().sum().sum()}")
+
+    # 3. Simple Preview
+    st.markdown("### 📂 Selected Dataset Preview")
+    st.dataframe(raw_df.head(), use_container_width=True)
 
     st.markdown("---")
 
-    # 4. Visualization Row
+    # 4. Visualizations
     col1, col2 = st.columns(2)
 
     with col1:
-        st.write("**HFR-MADM Performance Scores**")
+        st.write("**Dataset Quality Scores**")
         fig1, ax1 = plt.subplots(figsize=(6, 4))
         sns.barplot(
             data=rankings,
@@ -251,7 +245,7 @@ with tab1:
         plt.close(fig1)
 
     with col2:
-        st.write("**Dataset Scale Comparison**")
+        st.write("**Dataset Size vs Feature Count**")
         fig2, ax2 = plt.subplots(figsize=(6, 4))
         sns.barplot(
             data=rankings,
@@ -343,6 +337,7 @@ with tab3:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
             st.toast("Analysis Complete: Low Risk Detected", icon='✅')
    
+
 
 
 
