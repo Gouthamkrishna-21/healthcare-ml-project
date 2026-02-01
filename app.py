@@ -94,7 +94,6 @@ section[data-testid="stSidebar"] {
 </style>
 """, unsafe_allow_html=True)
 
-
 # ==========================================
 # 2. LOGIC (Logistic Regression Focus)
 # ==========================================
@@ -323,6 +322,7 @@ with tab3:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
             st.toast("Analysis Complete: Low Risk Detected", icon='✅')
    
+
 
 
 
