@@ -60,6 +60,40 @@ section[data-testid="stSidebar"] {
 }
 </style>
 """, unsafe_allow_html=True)
+st.markdown("""
+<style>
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+    border-right: 1px solid #e2e8f0;
+    padding-top: 1rem;
+}
+
+.sidebar-title {
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0.5rem 0 1.5rem 0;
+}
+
+.sidebar-card {
+    background-color: white;
+    padding: 14px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    margin-bottom: 1rem;
+}
+
+.rank-badge {
+    background: #e6f0ff;
+    color: #003a8f;
+    padding: 10px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-align: center;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 # ==========================================
 # 2. LOGIC (Logistic Regression Focus)
@@ -114,25 +148,43 @@ def train_model(X, y):
         scaler,
         X.columns
     )
+# Load datasets
+all_data = load_datasets("data")
+if not all_data:
+    st.error("❌ Data folder is empty or missing CSV files.")
+    st.stop()
+
+# Rank datasets
+rankings = hfr_madm_logic(all_data)
+rankings = rankings.reset_index(drop=True)
+rankings.insert(0, "Rank", rankings.index + 1)
 
 # ==========================================
 # 3. SIDEBAR NAVIGATION
 # ==========================================
-st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3774/3774299.png", width=100)
-st.sidebar.markdown("### **Navigation Menu**")
+st.sidebar.markdown(
+    """
+    <div style="text-align:center;">
+        <img src="https://cdn-icons-png.flaticon.com/512/3774/3774299.png" width="90"/>
+        <div class="sidebar-title">Navigation Menu</div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-all_data = load_datasets("data")
-if not all_data:
-    st.sidebar.error("Data folder empty!")
-    st.stop()
+st.sidebar.markdown('<div class="sidebar-card">📂 <b>Database Access</b>', unsafe_allow_html=True)
+dataset_choice = st.sidebar.selectbox("", list(all_data.keys()))
+st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
-rankings = hfr_madm_logic(all_data)
-rankings = rankings.reset_index(drop=True)
-rankings.insert(0, "Rank", rankings.index + 1)
-dataset_choice = st.sidebar.selectbox("📂 Database Access", list(all_data.keys()))
 st.sidebar.markdown("---")
-st.sidebar.write("🏷️ **Top Ranked:**")
-st.sidebar.code(rankings.iloc[0]["Dataset"])
+
+st.sidebar.markdown('<div class="sidebar-card">🏷️ <b>Top Ranked Dataset</b>', unsafe_allow_html=True)
+st.sidebar.markdown(
+    f'<div class="rank-badge">{rankings.iloc[0]["Dataset"]}</div>',
+    unsafe_allow_html=True
+)
+st.sidebar.markdown('</div>', unsafe_allow_html=True)
+
 
 # ==========================================
 # 4. MAIN INTERFACE
@@ -260,6 +312,7 @@ with tab3:
                 st.error(f"### ⚠️ DIAGNOSIS: HIGH RISK\nConfidence: {prob:.2%}")
             else:
                 st.success(f"### ✅ DIAGNOSIS: LOW RISK\nConfidence: {prob:.2%}")
+
 
 
 
