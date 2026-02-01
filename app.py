@@ -12,88 +12,104 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 # ==========================================
 # 1. ADVANCED UI CONFIGURATION
 # ==========================================
+# ==========================================
+# 1. ADVANCED UI CONFIGURATION
+# ==========================================
 st.set_page_config(
     page_title="HFR-MADM Clinical Portal",
     page_icon="🩺",
     layout="wide"
 )
 
-# Custom CSS for "Real Website" Look
+# Deep Medical Blue Theme - High Priority CSS
 st.markdown("""
 <style>
-/* Main background */
+/* 1. Main App Background */
 .stApp {
     background-color: #f8f9fa;
 }
-/* Custom Header Card */
+
+/* 2. Custom Header Card */
 .main-header {
-    background: linear-gradient(90deg, #004e92 0%, #000428 100%);
+    background: linear-gradient(90deg, #002b5b 0%, #004e92 100%);
     padding: 2rem;
     border-radius: 15px;
     color: white;
     margin-bottom: 2rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
 }
-/* Metric Card Styling */
+
+/* 3. FORCED SIDEBAR THEME */
+/* Targets the sidebar container directly with high priority */
+[data-testid="stSidebar"] {
+    background-image: linear-gradient(180deg, #002b5b 0%, #004e92 100%) !important;
+    background-color: #002b5b !important;
+    border-right: 1px solid #001a35 !important;
+}
+
+/* Force all text in sidebar to be white for readability */
+[data-testid="stSidebar"] .stMarkdown p, 
+[data-testid="stSidebar"] label, 
+[data-testid="stSidebar"] div,
+[data-testid="stSidebar"] span {
+    color: white !important;
+}
+
+.sidebar-title {
+    color: #ffffff !important;
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Sidebar Cards - Glass Effect */
+.sidebar-card {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    backdrop-filter: blur(12px);
+    padding: 16px;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Vibrant Gold Rank Badge */
+.rank-badge {
+    background: linear-gradient(90deg, #ffd700 0%, #ffae00 100%) !important;
+    color: #002b5b !important;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 700;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(255, 174, 0, 0.4);
+}
+
+/* 4. Global UI Elements (Tabs & Metrics) */
 div[data-testid="stMetric"] {
     background-color: white;
     padding: 20px;
     border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     border: 1px solid #edf2f7;
 }
-/* Sidebar styling */
-section[data-testid="stSidebar"] {
-    background-color: #ffffff;
-    border-right: 1px solid #e2e8f0;
-}
-/* Tabs styling */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-}
+
+.stTabs [data-baseweb="tab-list"] { gap: 10px; }
 .stTabs [data-baseweb="tab"] {
-    height: 45px;
+    height: 48px;
     background-color: white;
-    border-radius: 8px 8px 0 0;
-    padding: 10px 25px;
+    border-radius: 10px 10px 0 0;
+    padding: 10px 30px;
     font-weight: 600;
+    transition: all 0.3s ease;
+}
+.stTabs [aria-selected="true"] {
+    background-color: #004e92 !important;
+    color: white !important;
 }
 </style>
 """, unsafe_allow_html=True)
-st.markdown("""
-<style>
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
-    border-right: 1px solid #e2e8f0;
-    padding-top: 1rem;
-}
-
-.sidebar-title {
-    text-align: center;
-    font-size: 1.2rem;
-    font-weight: 700;
-    margin: 0.5rem 0 1.5rem 0;
-}
-
-.sidebar-card {
-    background-color: white;
-    padding: 14px;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    margin-bottom: 1rem;
-}
-
-.rank-badge {
-    background: #e6f0ff;
-    color: #003a8f;
-    padding: 10px;
-    border-radius: 10px;
-    font-weight: 600;
-    text-align: center;
-}
-</style>
-""", unsafe_allow_html=True)
-
 # ==========================================
 # 2. LOGIC (Logistic Regression Focus)
 # ==========================================
@@ -322,6 +338,7 @@ with tab3:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
             st.toast("Analysis Complete: Low Risk Detected", icon='✅')
    
+
 
 
 
