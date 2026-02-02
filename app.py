@@ -9,16 +9,13 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-# ==========================================
-# 1. ADVANCED UI CONFIGURATION
-# ==========================================
+# 1.ADVANCED UI CONFIGURATION
 st.set_page_config(
     page_title="HFR-MADM Clinical Portal",
     page_icon="🩺",
     layout="wide"
 )
 
-# Deep Medical Blue Theme with Visible Dropdown Text
 st.markdown("""
 <style>
 /* 1. Main Background */
@@ -95,9 +92,8 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
-# ==========================================
+
 # 2. LOGIC (Logistic Regression Focus)
-# ==========================================
 def load_datasets(folder="data"):
     datasets = {}
     if not os.path.exists(folder):
@@ -159,9 +155,7 @@ rankings = hfr_madm_logic(all_data)
 rankings = rankings.reset_index(drop=True)
 rankings.insert(0, "Rank", rankings.index + 1)
 
-# ==========================================
 # 3. SIDEBAR NAVIGATION
-# ==========================================
 st.sidebar.markdown(
     """
     <div style="text-align:center;">
@@ -185,9 +179,7 @@ st.sidebar.markdown(
 )
 st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
-# ==========================================
 # 4. MAIN INTERFACE
-# ==========================================
 st.markdown(f"""
 <div class="main-header">
     <h1>🩺Predictive Healthcare Decision System</h1>
@@ -322,6 +314,7 @@ with tab3:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
             st.toast("Analysis Complete: Low Risk Detected", icon='✅')
    
+
 
 
 
