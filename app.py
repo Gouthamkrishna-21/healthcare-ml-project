@@ -4,12 +4,14 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-# 1.ADVANCED UI CONFIGURATION
+# =========================================================
+# 1. PAGE CONFIG + STYLING
+# =========================================================
 st.set_page_config(
     page_title="HFR-MADM Clinical Portal",
     page_icon="🩺",
@@ -18,10 +20,8 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-/* 1. Main Background */
 .stApp { background-color: #f8f9fa; }
 
-/* 2. Custom Header */
 .main-header {
     background: linear-gradient(90deg, #002b5b 0%, #004e92 100%);
     padding: 2rem;
@@ -31,28 +31,16 @@ st.markdown("""
     box-shadow: 0 8px 16px rgba(0,0,0,0.1);
 }
 
-/* 3. FORCED SIDEBAR THEME */
 [data-testid="stSidebar"] {
     background-image: linear-gradient(180deg, #002b5b 0%, #004e92 100%) !important;
     background-color: #002b5b !important;
 }
-
-/* Force Sidebar labels to be white */
 [data-testid="stSidebar"] label, .sidebar-title {
     color: white !important;
     font-weight: 700 !important;
 }
+div[data-baseweb="select"] > div { color: black !important; }
 
-/* FIX: Force Dataset Selection text to be BLACK */
-div[data-baseweb="select"] > div {
-    color: black !important;
-}
-input[data-testid="stWidgetInput-selectbox"] {
-    color: black !important;
-    -webkit-text-fill-color: black !important;
-}
-
-/* Sidebar Glass Cards - High Contrast */
 .sidebar-card {
     background-color: rgba(255, 255, 255, 0.15) !important;
     backdrop-filter: blur(10px);
@@ -60,20 +48,10 @@ input[data-testid="stWidgetInput-selectbox"] {
     border-radius: 15px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     margin-bottom: 1rem;
-    color: white !important; 
-}
-
-/* Force specific tags like <b> to be white */
-.sidebar-card b, .sidebar-card span, .sidebar-card div {
     color: white !important;
 }
+.sidebar-card b, .sidebar-card span, .sidebar-card div { color: white !important; }
 
-/* Keep the dropdown text black so it's readable in the white box */
-div[data-baseweb="select"] > div {
-    color: black !important;
-}
-
-/* Gold Rank Badge */
 .rank-badge {
     background: linear-gradient(90deg, #ffd700 0%, #ffae00 100%) !important;
     color: #002b5b !important;
@@ -83,7 +61,6 @@ div[data-baseweb="select"] > div {
     text-align: center;
 }
 
-/* 4. Tabs & Metrics */
 div[data-testid="stMetric"] {
     background-color: white;
     padding: 20px;
@@ -93,40 +70,129 @@ div[data-testid="stMetric"] {
 </style>
 """, unsafe_allow_html=True)
 
-# 2. LOGIC (Logistic Regression Focus)
-def load_datasets(folder="data"):
+
+# =========================================================
+# 2. DATA LOADING (now records how much data survived cleaning)
+# =========================================================
+def load_datasets(folder="data", uploaded_files=None):
+    """Loads CSVs from a local folder and/or user-uploaded files.
+    Tracks retention_rate = rows kept after cleaning / original rows,
+    which becomes the real (non-hardcoded) 'reliability' criterion below.
+    """
     datasets = {}
-    if not os.path.exists(folder):
-        return datasets
-    for file in os.listdir(folder):
-        if file.endswith(".csv"):
-            df = pd.read_csv(os.path.join(folder, file)).dropna().drop_duplicates()
-            le = LabelEncoder()
-            for col in df.columns:
-                if not pd.api.types.is_numeric_dtype(df[col]):
-                    df[col] = le.fit_transform(df[col].astype(str))
-            X, y = df.iloc[:, :-1], df.iloc[:, -1]
-            if y.nunique() >= 2:
-                datasets[file] = (X, y, df)
+    sources = []
+
+    if os.path.exists(folder):
+        for file in os.listdir(folder):
+            if file.endswith(".csv"):
+                sources.append((file, os.path.join(folder, file)))
+
+    if uploaded_files:
+        for f in uploaded_files:
+            sources.append((f.name, f))
+
+    for name, source in sources:
+        try:
+            raw = pd.read_csv(source)
+        except Exception:
+            continue
+
+        original_rows = len(raw)
+        if original_rows == 0:
+            continue
+
+        df = raw.dropna().drop_duplicates()
+        cleaned_rows = len(df)
+        retention_rate = cleaned_rows / original_rows if original_rows else 0
+
+        le = LabelEncoder()
+        for col in df.columns:
+            if not pd.api.types.is_numeric_dtype(df[col]):
+                df[col] = le.fit_transform(df[col].astype(str))
+
+        if df.shape[0] < 10 or df.shape[1] < 2:
+            continue
+
+        X, y = df.iloc[:, :-1], df.iloc[:, -1]
+        if y.nunique() >= 2:
+            datasets[name] = {"X": X, "y": y, "df": df, "retention": retention_rate}
+
     return datasets
 
-def hfr_madm_logic(datasets):
-    weights = np.array([0.35, 0.25, 0.25, 0.15])
+
+# =========================================================
+# 3. HFR-MADM RANKING (every criterion is now actually computed)
+# =========================================================
+def normalized_entropy_balance(y):
+    """Class balance as normalized entropy: 1.0 = perfectly balanced,
+    0.0 = single-class. Works for binary AND multi-class targets
+    (the old version only checked the majority class share)."""
+    counts = y.value_counts(normalize=True).values
+    k = len(counts)
+    if k <= 1:
+        return 0.0
+    ent = -np.sum(counts * np.log(counts + 1e-9))
+    return ent / np.log(k)
+
+
+def hfr_madm_logic(datasets, weights, n_bootstrap=8, seed=42):
+    """
+    Weighted multi-attribute ranking across 4 criteria: size, class balance,
+    feature richness, and reliability (data retained after cleaning).
+
+    The 'hesitant fuzzy' element: each of the resampling-sensitive criteria
+    (size, balance, features) is recomputed across n_bootstrap resamples of
+    each dataset, producing a genuine spread of possible values rather than
+    a fixed number. The final score is the weighted mean MINUS a weighted
+    uncertainty penalty, so a dataset whose quality signal is volatile across
+    resamples ranks lower than an equally-scored but more stable dataset.
+    """
+    rng = np.random.default_rng(seed)
     results = []
-    for name, (X, y, _) in datasets.items():
-        f1 = min(len(X) / 1500, 1.0)
-        f2 = 1 - abs(0.5 - y.value_counts(normalize=True).iloc[0])
-        f3 = min(X.shape[1] / 25, 1.0)
-        f4 = 0.95
-        hesitant = [np.mean([m * 0.9, m, min(m * 1.1, 1.0)]) for m in [f1, f2, f3, f4]]
+
+    for name, d in datasets.items():
+        X, y, retention = d["X"], d["y"], d["retention"]
+        n = len(X)
+
+        size_samples, balance_samples, feat_samples = [], [], []
+        for _ in range(n_bootstrap):
+            idx = rng.integers(0, n, size=n)
+            Xb, yb = X.iloc[idx], y.iloc[idx]
+            size_samples.append(min(len(Xb) / 1500, 1.0))
+            balance_samples.append(normalized_entropy_balance(yb))
+            feat_samples.append(min(Xb.shape[1] / 25, 1.0))
+
+        criteria_stats = {
+            "size": (np.mean(size_samples), np.std(size_samples)),
+            "balance": (np.mean(balance_samples), np.std(balance_samples)),
+            "features": (np.mean(feat_samples), np.std(feat_samples)),
+            "reliability": (retention, 0.0),  # fixed property of the dataset, not resampled
+        }
+
+        agg_mean, agg_uncertainty = 0.0, 0.0
+        for i, key in enumerate(["size", "balance", "features", "reliability"]):
+            mean_val, std_val = criteria_stats[key]
+            agg_mean += weights[i] * mean_val
+            agg_uncertainty += weights[i] * std_val
+
+        final_score = agg_mean - agg_uncertainty
+
         results.append({
             "Dataset": name,
-            "Score": round(np.dot(hesitant, weights), 4),
-            "Samples": len(X),
-            "Features": X.shape[1]
+            "Score": round(final_score, 4),
+            "Uncertainty": round(agg_uncertainty, 4),
+            "Samples": n,
+            "Features": X.shape[1],
+            "Balance": round(criteria_stats["balance"][0], 3),
+            "Reliability": round(retention, 3),
         })
+
     return pd.DataFrame(results).sort_values("Score", ascending=False)
 
+
+# =========================================================
+# 4. MODEL TRAINING (added 5-fold cross-validation)
+# =========================================================
 def train_model(X, y):
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
@@ -134,28 +200,29 @@ def train_model(X, y):
     scaler = StandardScaler()
     X_train_s = scaler.fit_transform(X_train)
     X_test_s = scaler.transform(X_test)
+
     model = LogisticRegression(max_iter=1000).fit(X_train_s, y_train)
     preds = model.predict(X_test_s)
+
+    # 5-fold CV on the full dataset gives a more stable accuracy estimate
+    # than a single train/test split alone.
+    X_all_s = StandardScaler().fit_transform(X)
+    cv_scores = cross_val_score(LogisticRegression(max_iter=1000), X_all_s, y, cv=5)
+
     return (
         model,
         accuracy_score(y_test, preds),
+        cv_scores,
         confusion_matrix(y_test, preds),
         classification_report(y_test, preds, output_dict=True),
         scaler,
         X.columns
     )
-# Load datasets
-all_data = load_datasets("data")
-if not all_data:
-    st.error("❌ Data folder is empty or missing CSV files.")
-    st.stop()
 
-# Rank datasets
-rankings = hfr_madm_logic(all_data)
-rankings = rankings.reset_index(drop=True)
-rankings.insert(0, "Rank", rankings.index + 1)
 
-# 3. SIDEBAR NAVIGATION
+# =========================================================
+# 5. SIDEBAR: dataset source, upload, weight sliders
+# =========================================================
 st.sidebar.markdown(
     """
     <div style="text-align:center;">
@@ -166,11 +233,36 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 
+st.sidebar.markdown('<div class="sidebar-card">📤 <b>Add a Dataset</b>', unsafe_allow_html=True)
+uploaded = st.sidebar.file_uploader(
+    "Upload additional CSVs (last column = target)",
+    type=["csv"], accept_multiple_files=True
+)
+st.sidebar.markdown('</div>', unsafe_allow_html=True)
+
+all_data = load_datasets("data", uploaded_files=uploaded)
+if not all_data:
+    st.error("❌ No usable datasets found. Add CSVs to the 'data' folder or upload one from the sidebar.")
+    st.stop()
+
+st.sidebar.markdown('<div class="sidebar-card">⚖️ <b>Ranking Weights</b>', unsafe_allow_html=True)
+w_size = st.sidebar.slider("Sample size weight", 0.0, 1.0, 0.35, 0.05)
+w_balance = st.sidebar.slider("Class balance weight", 0.0, 1.0, 0.25, 0.05)
+w_features = st.sidebar.slider("Feature richness weight", 0.0, 1.0, 0.25, 0.05)
+w_reliability = st.sidebar.slider("Data reliability weight", 0.0, 1.0, 0.15, 0.05)
+raw_weights = np.array([w_size, w_balance, w_features, w_reliability])
+weights = raw_weights / raw_weights.sum() if raw_weights.sum() > 0 else np.array([0.25]*4)
+st.sidebar.caption(f"Normalized: {', '.join(f'{w:.2f}' for w in weights)}")
+st.sidebar.markdown('</div>', unsafe_allow_html=True)
+
+rankings = hfr_madm_logic(all_data, weights)
+rankings = rankings.reset_index(drop=True)
+rankings.insert(0, "Rank", rankings.index + 1)
+
+st.sidebar.markdown("---")
 st.sidebar.markdown('<div class="sidebar-card">📂 <b>Database Access</b>', unsafe_allow_html=True)
 dataset_choice = st.sidebar.selectbox("", list(all_data.keys()))
 st.sidebar.markdown('</div>', unsafe_allow_html=True)
-
-st.sidebar.markdown("---")
 
 st.sidebar.markdown('<div class="sidebar-card">🏷️ <b>Top Ranked Dataset</b>', unsafe_allow_html=True)
 st.sidebar.markdown(
@@ -179,67 +271,78 @@ st.sidebar.markdown(
 )
 st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
-# 4. MAIN INTERFACE
+
+# =========================================================
+# 6. MAIN INTERFACE
+# =========================================================
 st.markdown(f"""
 <div class="main-header">
-    <h1>🩺Predictive Healthcare Decision System</h1>
+    <h1>🩺 Predictive Healthcare Decision System</h1>
     <p>HFR-MADM Optimized Analysis | Active Source: {dataset_choice}</p>
 </div>
 """, unsafe_allow_html=True)
 
-X_sel, y_sel, raw_df = all_data[dataset_choice]
-model, acc, cm, report, scaler, feature_names = train_model(X_sel, y_sel)
+X_sel, y_sel, raw_df = all_data[dataset_choice]["X"], all_data[dataset_choice]["y"], all_data[dataset_choice]["df"]
+model, acc, cv_scores, cm, report, scaler, feature_names = train_model(X_sel, y_sel)
 
 tab1, tab2, tab3 = st.tabs(
     ["📊 Data Intelligence", "🧪 Model Performance", "🔍 Risk Diagnosis"]
 )
 
 with tab1:
+    with st.expander("ℹ️ How this ranking works", expanded=False):
+        st.write(
+            "Each dataset is scored on 4 criteria: sample size, class balance "
+            "(entropy-based, so it works for multi-class targets too), feature "
+            "richness, and reliability (share of rows that survived cleaning — "
+            "a proxy for original data quality). Size, balance, and feature "
+            "scores are recomputed across several bootstrap resamples of each "
+            "dataset, so each carries a *range* of plausible values rather than "
+            "a single fixed number. The final score is the weighted average of "
+            "these criteria, minus a penalty for how much that value swings "
+            "across resamples — a dataset with a volatile signal ranks below "
+            "an equally-scored but more stable one. Adjust the weights in the "
+            "sidebar to see how the ranking responds."
+        )
+
     st.markdown("### *HFR-MADM Quality Ranking*")
     st.dataframe(
         rankings.style
         .background_gradient(cmap="Blues", subset=["Score"])
-        .format({"Score": "{:.3f}"}),
-    use_container_width=True,
-    hide_index=True
+        .format({"Score": "{:.3f}", "Uncertainty": "{:.3f}", "Balance": "{:.3f}", "Reliability": "{:.3f}"}),
+        use_container_width=True,
+        hide_index=True
     )
 
     col1, col2 = st.columns(2)
-
     with col1:
-        st.write("*Dataset Quality Scores*")
+        st.write("*Dataset Quality Scores (with uncertainty band)*")
         fig1, ax1 = plt.subplots(figsize=(6, 4))
-        sns.barplot(
-            data=rankings,
-            x="Score",
-            y="Dataset",
-            palette="Blues_d",
-            ax=ax1
-        )
+        ax1.barh(rankings["Dataset"], rankings["Score"], xerr=rankings["Uncertainty"],
+                 color="#004e92", capsize=4)
+        ax1.invert_yaxis()
+        ax1.set_xlabel("Score")
         st.pyplot(fig1)
 
     with col2:
         st.write("*Dataset Size vs Feature Count*")
         fig2, ax2 = plt.subplots(figsize=(6, 4))
-
-        sns.barplot(
-            data=rankings,
-            x="Samples",
-            y="Dataset",
-            palette="Blues_d",
-            ax=ax2
-        )
-
+        sns.barplot(data=rankings, x="Samples", y="Dataset", palette="Blues_d", ax=ax2)
         ax2.set_xlabel("Number of Samples")
         ax2.set_ylabel("Dataset")
-
         st.pyplot(fig2)
+
 with tab2:
     st.markdown("### **Metrics**")
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Diagnostic Accuracy", f"{acc:.2%}")
-    m2.metric("Weighted F1-Score", f"{report['weighted avg']['f1-score']:.2%}")
-    m3.metric("Processed Samples", f"{int(report['macro avg']['support'])}")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Test-Split Accuracy", f"{acc:.2%}")
+    m2.metric("5-Fold CV Accuracy", f"{cv_scores.mean():.2%}", f"±{cv_scores.std():.2%}")
+    m3.metric("Weighted F1-Score", f"{report['weighted avg']['f1-score']:.2%}")
+    m4.metric("Processed Samples", f"{int(report['macro avg']['support'])}")
+    st.caption(
+        "CV accuracy is a more stable estimate than the single test-split number above — "
+        "use it as the headline figure if asked how confident the model's accuracy claim is."
+    )
 
     st.markdown("---")
     l, r = st.columns(2)
@@ -261,26 +364,19 @@ with tab3:
     st.markdown("### **Patient Risk Predictor**")
     st.info("Input clinical parameters to generate a risk probability score.")
 
-    # We create two columns: Left for the Form, Right for the Overall Context
     form_col, info_col = st.columns([2, 1])
 
     with info_col:
         st.write("**Overall Dataset Risk Context**")
-        # ---- Small Pie Chart for Overall Risk ----
         risk_counts = y_sel.value_counts()
         labels = ['Low Risk', 'High Risk']
         sizes = [risk_counts.get(0, 0), risk_counts.get(1, 0)]
-        colors = ['#4A90E2', '#E53935'] 
+        colors = ['#4A90E2', '#E53935']
 
         fig_pie, ax_pie = plt.subplots(figsize=(3, 2))
         ax_pie.pie(
-            sizes,
-            labels=labels,
-            autopct='%1.1f%%',
-            startangle=90,
-            colors=colors,
-            radius=1.0,
-            textprops={'fontsize': 7},
+            sizes, labels=labels, autopct='%1.1f%%', startangle=90,
+            colors=colors, radius=1.0, textprops={'fontsize': 7},
             wedgeprops={'edgecolor': 'white', 'linewidth': 1}
         )
         ax_pie.axis('equal')
@@ -290,15 +386,13 @@ with tab3:
 
     with form_col:
         with st.form("clinical_form"):
-            cols = st.columns(2) # Two columns for form fields to save space
+            cols = st.columns(2)
             inputs = []
             for i, col in enumerate(feature_names):
                 with cols[i % 2]:
-                    # Added min_value=0.0 so any value can be entered
                     inputs.append(
                         st.number_input(col, value=float(raw_df[col].median()), min_value=0.0)
                     )
-
             submit = st.form_submit_button("Generate Individual Prediction", use_container_width=True)
 
     if submit:
@@ -313,26 +407,3 @@ with tab3:
         else:
             st.success(f"### ✅ INDIVIDUAL DIAGNOSIS: LOW RISK\nPersonalized Confidence: {prob:.2%}")
             st.toast("Analysis Complete: Low Risk Detected", icon='✅')
-   
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
