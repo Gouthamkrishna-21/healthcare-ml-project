@@ -193,6 +193,7 @@ def hfr_madm_logic(datasets, weights, n_bootstrap=8, seed=42):
 # =========================================================
 # 4. MODEL TRAINING (added 5-fold cross-validation)
 # =========================================================
+
 def train_model(X, y):
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
@@ -201,13 +202,11 @@ def train_model(X, y):
     X_train_s = scaler.fit_transform(X_train)
     X_test_s = scaler.transform(X_test)
 
-    model = LogisticRegression(max_iter=1000).fit(X_train_s, y_train)
+    model = LogisticRegression(max_iter=1000, class_weight="balanced").fit(X_train_s, y_train)
     preds = model.predict(X_test_s)
 
-    # 5-fold CV on the full dataset gives a more stable accuracy estimate
-    # than a single train/test split alone.
     X_all_s = StandardScaler().fit_transform(X)
-    cv_scores = cross_val_score(LogisticRegression(max_iter=1000), X_all_s, y, cv=5)
+    cv_scores = cross_val_score(LogisticRegression(max_iter=1000, class_weight="balanced"), X_all_s, y, cv=5)
 
     return (
         model,
@@ -368,10 +367,12 @@ with tab3:
 
     with info_col:
         st.write("**Overall Dataset Risk Context**")
-        risk_counts = y_sel.value_counts()
-        labels = ['Low Risk', 'High Risk']
-        sizes = [risk_counts.get(0, 0), risk_counts.get(1, 0)]
-        colors = ['#4A90E2', '#E53935']
+        risk_counts = y_sel.value_counts().sort_index()
+        class_labels = risk_counts.index.tolist()
+        sizes = risk_counts.values.tolist()
+        palette = ['#4A90E2', '#E53935', '#F5A623', '#7ED321']
+        colors = [palette[i % len(palette)] for i in range(len(class_labels))]
+        labels = [f"Class {c}" for c in class_labels]
 
         fig_pie, ax_pie = plt.subplots(figsize=(3, 2))
         ax_pie.pie(
@@ -401,7 +402,9 @@ with tab3:
         res = model.predict(input_scaled)[0]
         prob = model.predict_proba(input_scaled).max()
 
-        if res == 1:
+        minority_class = y_sel.value_counts().idxmin()
+
+        if res == minority_class:
             st.error(f"### ⚠️ INDIVIDUAL DIAGNOSIS: HIGH RISK\nPersonalized Confidence: {prob:.2%}")
             st.warning("**Recommendation:** Clinical intervention and further diagnostic testing recommended.")
         else:
